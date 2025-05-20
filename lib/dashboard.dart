@@ -2,6 +2,7 @@ import 'package:carbine/lib.dart';
 import 'package:carbine/main.dart';
 import 'package:carbine/number_pad.dart';
 import 'package:carbine/payment_selector.dart';
+import 'package:carbine/onchain_receive.dart';
 import 'package:carbine/scan.dart';
 import 'package:carbine/theme.dart';
 import 'package:carbine/refund.dart';
@@ -159,6 +160,13 @@ class _DashboardState extends State<Dashboard> {
                   NumberPad(fed: widget.fed, paymentType: _selectedPaymentType),
         ),
       );
+    } else if (_selectedPaymentType == PaymentType.onchain) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => OnChainReceive(fed: widget.fed),
+        ),
+      );
     } else if (_selectedPaymentType == PaymentType.ecash) {
       await Navigator.push(
         context,
@@ -186,6 +194,13 @@ class _DashboardState extends State<Dashboard> {
 
     _loadBalance();
     _loadTransactions();
+  }
+
+  void _onDebugPressed() async {
+    print("something works");
+    await debugWallet(federationId: widget.fed.federationId);
+    print("past call to debug wallet");
+    _loadBalance();
   }
 
   @override
@@ -229,6 +244,13 @@ class _DashboardState extends State<Dashboard> {
                 backgroundColor: Colors.blue,
                 onTap: () => _scheduleAction(_onSendPressed),
               ),
+          if (_selectedPaymentType == PaymentType.onchain)
+            SpeedDialChild(
+              child: const Icon(Icons.bug_report),
+              label: 'Debug',
+              backgroundColor: Colors.indigo,
+              onTap: () => _scheduleAction(_onDebugPressed),
+            ),
         ],
       ),
       body: SingleChildScrollView(
