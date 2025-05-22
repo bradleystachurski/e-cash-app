@@ -37,12 +37,15 @@ class _DashboardState extends State<Dashboard> {
 
   VoidCallback? _pendingAction;
 
+  late Stream<DepositEvent> depositEvents;
+
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
     _loadBalance();
     _loadTransactions();
+    depositEvents = thingy();
   }
 
   @override
@@ -306,6 +309,44 @@ class _DashboardState extends State<Dashboard> {
                 ],
               ),
             ),
+
+            const SizedBox(height: 24),
+
+            StreamBuilder<DepositEvent>(
+              stream: depositEvents,
+              builder: (context, snapshot) {
+                // styling shortcut
+                final style = Theme.of(context).textTheme.bodyLarge;
+
+                // error state
+                if (snapshot.hasError) {
+                  return Text(
+                    'Error loading deposits: ${snapshot.error}',
+                    style: style,
+                  );
+                }
+
+                // loading / no data yet
+                if (!snapshot.hasData) {
+                  return const CircularProgressIndicator();
+                }
+
+                // we have a DepositEvent!
+                final event = snapshot.data!;
+                return Card(
+                  margin: const EdgeInsets.symmetric(vertical: 8),
+                  child: ListTile(
+                    leading: const Icon(Icons.download, size: 32),
+                    title: Text('Received deposit event!', style: style),
+                    subtitle: Text(
+                      'Block height #${event.height} · ${event.txid} txid',
+                      style: style?.copyWith(fontSize: 12),
+                    ),
+                  ),
+                );
+              },
+            ),
+
             const SizedBox(height: 48),
             if (isLoadingBalance)
               const CircularProgressIndicator()

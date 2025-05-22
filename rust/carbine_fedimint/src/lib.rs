@@ -64,6 +64,7 @@ use lightning_invoice::{Bolt11Invoice, Description};
 use serde::Serialize;
 
 use crate::db::{FederationConfig, FederationConfigKey, FederationConfigKeyPrefix};
+use crate::frb_generated::StreamSink;
 
 pub const DEFAULT_RELAYS: &[&str] = &[
     "wss://relay.nostr.band",
@@ -343,6 +344,40 @@ pub async fn debug_wallet(federation_id: &FederationId) -> anyhow::Result<()> {
 }
 
 #[derive(Clone, Eq, PartialEq, Serialize, Debug)]
+pub struct DepositEvent {
+    height: u64,
+    txid: String,
+}
+
+#[frb]
+pub async fn thingy(sink: StreamSink<DepositEvent>) -> anyhow::Result<()> {
+    let mut height = 0;
+    while height < 10 {
+        let deposit_event = DepositEvent {
+            height,
+            txid: "fake_txid".to_string(),
+        };
+        if let Err(_e) = sink.add(deposit_event) {
+            break;
+        }
+        height += 1;
+        fedimint_core::runtime::sleep(Duration::from_secs(5)).await;
+    }
+
+    Ok(())
+}
+
+#[frb]
+pub async fn debug_wallet_stream(
+    sink: StreamSink<DepositEvent>,
+    federation_id: &FederationId,
+) -> anyhow::Result<()> {
+    let multimint = get_multimint().await;
+    let mm = multimint.read().await;
+    mm.debug_wallet_stream(sink, federation_id).await
+}
+
+#[derive(Clone, Eq, PartialEq, Serialize, Debug)]
 pub struct PaymentPreview {
     amount_msats: u64,
     payment_hash: String,
@@ -558,6 +593,8 @@ impl Multimint {
                 mnemonic
             };
 
+        println!("multimint new");
+        println!("mnemonic: {:#}", mnemonic);
         let mut modules = ClientModuleInitRegistry::new();
         modules.attach(LightningClientInit::default());
         modules.attach(MintClientInit);
@@ -1655,6 +1692,171 @@ impl Multimint {
     }
 
     pub async fn debug_wallet(&self, federation_id: &FederationId) -> anyhow::Result<()> {
+        let most_recent_unused = self.most_recent_unused_pegin_address(federation_id).await?;
+        println!("most_recent_unused: {:?}", most_recent_unused);
+
+        use reqwest::Client;
+        use serde_json::Value;
+
+        let client = self
+            .clients
+            .get(federation_id)
+            .expect("No federation exists");
+        let wallet_module =
+            client.get_first_module::<fedimint_wallet_client::WalletClientModule>()?;
+
+        // TODO: helper to find most recent unused address?
+
+        // TODO: remove this
+        // let entropy = client.get_decoded_client_secret::<Vec<u8>>().await?;
+        // let mnemonic = Mnemonic::from_entropy(&entropy)?;
+        // println!("mnemonic: {:?}", mnemonic);
+
+        let mut tweak_idx = TweakIdx(0);
+        loop {
+            println!("checking tweak index: {tweak_idx}");
+
+            // TODO: remove this
+            wallet_module.recheck_pegin_address(tweak_idx).await?;
+
+            match wallet_module.get_pegin_tweak_idx(tweak_idx).await {
+                Ok(data) => {
+                    println!("debug wallet data: {:?}", data);
+                    // TODO: consider bg task to handle update stream
+                    if data.claimed.is_empty() {
+                        // println!("tweak index is not claimed, rechecking in 15s");
+                        // fedimint_core::runtime::sleep(Duration::from_secs(15)).await;
+                        // wallet_module.recheck_pegin_address(tweak_idx).await?;
+                        // println!("was able to recheck the pegin address");
+                        // wallet_module.api.fetch_consensus_block_count().await;
+
+                        // continue;
+
+                        // event log?
+                        println!("pegin address not yet claimed, starting update stream");
+                        let mut update_stream = wallet_module
+                            .subscribe_deposit(data.operation_id)
+                            .await?
+                            .into_stream();
+                        while let Some(item) = update_stream.next().await {
+                            match item {
+                                DepositStateV2::WaitingForTransaction => {
+                                    println!("deposit not seen yet");
+                                }
+                                DepositStateV2::WaitingForConfirmation {
+                                    btc_deposited,
+                                    btc_out_point,
+                                } => {
+                                    println!("tx seen!");
+                                    println!("btc_deposited: {:?}", btc_deposited);
+                                    println!("btc_out_point: {:?}", btc_out_point);
+
+                                    let client = Client::new();
+
+                                    let tx_height = fedimint_core::util::retry(
+                                        "get confirmed block height",
+                                        fedimint_core::util::backoff_util::background_backoff(),
+                                        || async {
+                                            let resp = client
+                                                .get(format!(
+                                                    "https://mutinynet.com/api/tx/{}",
+                                                    btc_out_point.txid.to_string(),
+                                                ))
+                                                .send()
+                                                .await?
+                                                .error_for_status()?
+                                                .text()
+                                                .await?;
+
+                                            println!("mutinynet resp");
+                                            println!("{:?}", resp);
+
+                                            serde_json::from_str::<Value>(&resp)?
+                                                .get("status")
+                                                .and_then(|s| s.get("block_height"))
+                                                .and_then(|h| h.as_u64())
+                                                .ok_or_else(|| {
+                                                    anyhow::anyhow!("no confirmation height yet, still in mempool")
+                                                })
+                                        },
+                                    )
+                                    .await
+                                    .expect("Never gives up");
+
+                                    println!("block height: {:?}", tx_height);
+
+                                    let every_10_secs =
+                                        fedimint_core::util::backoff_util::custom_backoff(
+                                            Duration::from_secs(10),
+                                            Duration::from_secs(10),
+                                            None,
+                                        );
+
+                                    fedimint_core::util::retry(
+                                        "consensus confirmation",
+                                        every_10_secs,
+                                        || async {
+                                            let consensus_height = wallet_module
+                                                .api
+                                                .fetch_consensus_block_count()
+                                                .await?
+                                                .saturating_sub(1);
+
+                                            let needed = tx_height.saturating_sub(consensus_height);
+
+                                            dbg!(consensus_height);
+                                            dbg!(needed);
+
+                                            anyhow::ensure!(
+                                                needed == 0,
+                                                "{} more confs needed",
+                                                needed
+                                            );
+
+                                            println!("tx confirmed");
+                                            Ok(())
+                                        },
+                                    )
+                                    .await
+                                    .expect("Never gives up");
+
+                                    // trigger another check of pegin monitor for faster claim
+                                    wallet_module.recheck_pegin_address(tweak_idx).await?;
+                                }
+                                DepositStateV2::Confirmed { .. } => {
+                                    println!("tx confirmed");
+                                }
+                                DepositStateV2::Claimed { .. } => {
+                                    println!("tx claimed");
+                                }
+                                DepositStateV2::Failed(e) => {
+                                    println!("deposit failed: {:?}", e);
+                                }
+                            }
+                        }
+                    } else {
+                        tweak_idx = tweak_idx.next();
+                    }
+                }
+                Err(e) if e.to_string().contains("TweakIdx not found") => {
+                    println!("this tweak index is not found, so we haven't allocated a deposit address for this index yet");
+                    println!("tweak index: {tweak_idx}");
+                    break;
+                }
+                Err(e) => {
+                    bail!(e)
+                }
+            };
+        }
+
+        Ok(())
+    }
+
+    pub async fn debug_wallet_stream(
+        &self,
+        sink: StreamSink<DepositEvent>,
+        federation_id: &FederationId,
+    ) -> anyhow::Result<()> {
         let most_recent_unused = self.most_recent_unused_pegin_address(federation_id).await?;
         println!("most_recent_unused: {:?}", most_recent_unused);
 
