@@ -15,7 +15,9 @@ use fedimint_meta_client::common::DEFAULT_META_KEY;
 use fedimint_meta_client::MetaClientInit;
 use fedimint_wallet_client::api::WalletFederationApi;
 use fedimint_wallet_client::client_db::TweakIdx;
-use fedimint_wallet_client::{DepositStateV2, WithdrawState};
+use fedimint_wallet_client::{
+    DepositStateV2, WalletOperationMeta, WalletOperationMetaVariant, WithdrawState,
+};
 /* AUTO INJECTED BY flutter_rust_bridge. This line may not be accurate, and you can change it according to your needs. */
 use flutter_rust_bridge::frb;
 use serde_json::to_value;
@@ -1475,6 +1477,58 @@ impl Multimint {
                                         operation_id: key.operation_id.0.to_vec(),
                                     })
                                 }
+                            }
+                        }
+                    }
+                    "wallet" => {
+                        println!("found wallet tx history");
+                        let meta = op_log_val.meta::<WalletOperationMeta>();
+                        let outcome = op_log_val.outcome::<DepositStateV2>();
+                        match meta.variant {
+                            WalletOperationMetaVariant::Deposit {
+                                address,
+                                tweak_idx,
+                                expires_at,
+                            } => {
+                                println!("deposit");
+                                println!("address: {:?}", address);
+                                println!("tweak_idx: {:?}", tweak_idx);
+                                println!("expires_at: {:?}", expires_at);
+                                println!("outcome: {:?}", outcome);
+                                if let Some(DepositStateV2::Claimed {
+                                    btc_deposited,
+                                    btc_out_point,
+                                }) = outcome
+                                {
+                                    let amount = Amount::from_sats(btc_deposited.to_sat()).msats;
+                                    Some(Transaction {
+                                        received: true,
+                                        amount,
+                                        module: "wallet".to_string(),
+                                        timestamp,
+                                        operation_id: key.operation_id.0.to_vec(),
+                                    })
+                                } else {
+                                    None
+                                }
+                            }
+                            WalletOperationMetaVariant::Withdraw {
+                                address,
+                                amount,
+                                fee,
+                                change,
+                            } => {
+                                println!("withdraw");
+                                println!("address: {:?}", address);
+                                println!("amount: {:?}", amount);
+                                println!("fee: {:?}", fee);
+                                println!("change: {:?}", change);
+                                None
+                            }
+                            WalletOperationMetaVariant::RbfWithdraw { rbf: _, change: _ } => {
+                                println!("rbf withdraw");
+                                println!("real bad");
+                                None
                             }
                         }
                     }
