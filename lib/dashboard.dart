@@ -49,6 +49,15 @@ class _DashboardState extends State<Dashboard> {
         debugWalletStream(
           federationId: widget.fed.federationId,
         ).asBroadcastStream();
+    depositEvents.listen((event) {
+      if (event.eventKind is DepositEventKind_Confirmed) {
+        final confirmedEvt =
+            (event.eventKind as DepositEventKind_Confirmed).field0;
+        print('pattern match confirmed: ${confirmedEvt.txid}');
+        _loadBalance();
+        _loadTransactions();
+      }
+    });
   }
 
   @override
@@ -371,13 +380,6 @@ class _DashboardState extends State<Dashboard> {
                         case DepositEventKind_Confirmed(
                           field0: final confirmedEvt,
                         ):
-                          print(
-                            'pattern match confirmed: ${confirmedEvt.txid}',
-                          );
-                          _loadBalance();
-                          _loadTransactions;
-                          // TODO: this seems wrong, just polls agressively with
-                          // the print statement that mattern match confirmed
                           return const SizedBox();
                       }
 
