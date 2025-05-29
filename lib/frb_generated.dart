@@ -3472,11 +3472,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   DepositEvent dco_decode_deposit_event(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 2)
-      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
     return DepositEvent(
       height: dco_decode_u_64(arr[0]),
       txid: dco_decode_String(arr[1]),
+      needed: dco_decode_u_64(arr[2]),
+      msg: dco_decode_String(arr[3]),
     );
   }
 
@@ -4218,7 +4220,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_height = sse_decode_u_64(deserializer);
     var var_txid = sse_decode_String(deserializer);
-    return DepositEvent(height: var_height, txid: var_txid);
+    var var_needed = sse_decode_u_64(deserializer);
+    var var_msg = sse_decode_String(deserializer);
+    return DepositEvent(
+      height: var_height,
+      txid: var_txid,
+      needed: var_needed,
+      msg: var_msg,
+    );
   }
 
   @protected
@@ -5038,6 +5047,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_u_64(self.height, serializer);
     sse_encode_String(self.txid, serializer);
+    sse_encode_u_64(self.needed, serializer);
+    sse_encode_String(self.msg, serializer);
   }
 
   @protected

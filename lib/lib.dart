@@ -290,11 +290,19 @@ abstract class SpendOobState implements RustOpaqueInterface {}
 class DepositEvent {
   final BigInt height;
   final String txid;
+  final BigInt needed;
+  final String msg;
 
-  const DepositEvent({required this.height, required this.txid});
+  const DepositEvent({
+    required this.height,
+    required this.txid,
+    required this.needed,
+    required this.msg,
+  });
 
   @override
-  int get hashCode => height.hashCode ^ txid.hashCode;
+  int get hashCode =>
+      height.hashCode ^ txid.hashCode ^ needed.hashCode ^ msg.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -302,7 +310,9 @@ class DepositEvent {
       other is DepositEvent &&
           runtimeType == other.runtimeType &&
           height == other.height &&
-          txid == other.txid;
+          txid == other.txid &&
+          needed == other.needed &&
+          msg == other.msg;
 }
 
 class FederationMeta {

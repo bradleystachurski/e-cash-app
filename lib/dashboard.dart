@@ -45,7 +45,7 @@ class _DashboardState extends State<Dashboard> {
     _scrollController.addListener(_onScroll);
     _loadBalance();
     _loadTransactions();
-    depositEvents = thingy();
+    depositEvents = debugWalletStream(federationId: widget.fed.federationId);
   }
 
   @override
@@ -201,7 +201,7 @@ class _DashboardState extends State<Dashboard> {
 
   void _onDebugPressed() async {
     print("something works");
-    await debugWallet(federationId: widget.fed.federationId);
+    debugWalletStream(federationId: widget.fed.federationId);
     print("past call to debug wallet");
     _loadBalance();
   }
@@ -338,10 +338,12 @@ class _DashboardState extends State<Dashboard> {
                   child: ListTile(
                     leading: const Icon(Icons.download, size: 32),
                     title: Text('Received deposit event!', style: style),
-                    subtitle: Text(
-                      'Block height #${event.height} · ${event.txid} txid',
-                      style: style?.copyWith(fontSize: 12),
-                    ),
+                    subtitle: Text('''
+                      ${event.msg}
+                      tx height: ${event.height}
+                      needed: ${event.needed}
+                      ${event.txid}
+                      ''', style: style?.copyWith(fontSize: 12)),
                   ),
                 );
               },

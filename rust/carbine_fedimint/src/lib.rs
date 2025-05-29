@@ -347,6 +347,8 @@ pub async fn debug_wallet(federation_id: &FederationId) -> anyhow::Result<()> {
 pub struct DepositEvent {
     height: u64,
     txid: String,
+    needed: u64,
+    msg: String,
 }
 
 #[frb]
@@ -356,6 +358,8 @@ pub async fn thingy(sink: StreamSink<DepositEvent>) -> anyhow::Result<()> {
         let deposit_event = DepositEvent {
             height,
             txid: "fake_txid".to_string(),
+            needed: u64::MAX,
+            msg: "thingy event".to_string(),
         };
         if let Err(_e) = sink.add(deposit_event) {
             break;
@@ -374,7 +378,9 @@ pub async fn debug_wallet_stream(
 ) -> anyhow::Result<()> {
     let multimint = get_multimint().await;
     let mm = multimint.read().await;
-    mm.debug_wallet_stream(sink, federation_id).await
+    mm.debug_wallet_stream(sink, federation_id).await?;
+    println!("done with debug_wallet_stream call");
+    Ok(())
 }
 
 #[derive(Clone, Eq, PartialEq, Serialize, Debug)]
@@ -1898,24 +1904,50 @@ impl Multimint {
                             match item {
                                 DepositStateV2::WaitingForTransaction => {
                                     println!("deposit not seen yet");
+                                    let deposit_event = DepositEvent {
+                                        height: 0,
+                                        txid: "not yet".into(),
+                                        needed: u64::MAX,
+                                        msg: "deposit not seen yet".into(),
+                                    };
+                                    sink.add(deposit_event)
+                                        .expect("couldn't add deposit event to stream");
                                 }
                                 DepositStateV2::WaitingForConfirmation {
                                     btc_deposited,
                                     btc_out_point,
                                 } => {
+                                    println!("tx is about to be seen");
                                     println!("tx seen!");
                                     println!("btc_deposited: {:?}", btc_deposited);
                                     println!("btc_out_point: {:?}", btc_out_point);
 
+                                    let deposit_event = DepositEvent {
+                                        height: 0,
+                                        txid: btc_out_point.txid.to_string(),
+                                        needed: u64::MAX,
+                                        msg: "tx seen in mempool".into(),
+                                    };
+                                    sink.add(deposit_event)
+                                        .expect("couldn't add deposit event to stream");
+
+                                    println!("creating new client");
                                     let client = Client::new();
+                                    println!("created new client");
+
+                                    // let api_url = "https://mutinynet.com/api".to_string();
+                                    let api_url = "http://localhost:22281".to_string();
+                                    println!("making calls to get tx height");
 
                                     let tx_height = fedimint_core::util::retry(
                                         "get confirmed block height",
                                         fedimint_core::util::backoff_util::background_backoff(),
                                         || async {
+                                            println!("inside retry for get confirmed block height");
                                             let resp = client
                                                 .get(format!(
-                                                    "https://mutinynet.com/api/tx/{}",
+                                                    "{}/tx/{}",
+                                                    api_url,
                                                     btc_out_point.txid.to_string(),
                                                 ))
                                                 .send()
@@ -1962,6 +1994,15 @@ impl Multimint {
 
                                             dbg!(consensus_height);
                                             dbg!(needed);
+
+                                            let deposit_event = DepositEvent {
+                                                height: tx_height,
+                                                txid: btc_out_point.txid.to_string(),
+                                                needed,
+                                                msg: "waiting for confs".into(),
+                                            };
+                                            sink.add(deposit_event)
+                                                .expect("couldn't add deposit event to stream");
 
                                             anyhow::ensure!(
                                                 needed == 0,

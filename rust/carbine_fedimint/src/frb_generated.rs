@@ -4170,9 +4170,13 @@ impl SseDecode for crate::DepositEvent {
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_height = <u64>::sse_decode(deserializer);
         let mut var_txid = <String>::sse_decode(deserializer);
+        let mut var_needed = <u64>::sse_decode(deserializer);
+        let mut var_msg = <String>::sse_decode(deserializer);
         return crate::DepositEvent {
             height: var_height,
             txid: var_txid,
+            needed: var_needed,
+            msg: var_msg,
         };
     }
 }
@@ -4904,6 +4908,8 @@ impl flutter_rust_bridge::IntoDart for crate::DepositEvent {
         [
             self.height.into_into_dart().into_dart(),
             self.txid.into_into_dart().into_dart(),
+            self.needed.into_into_dart().into_dart(),
+            self.msg.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -5295,6 +5301,8 @@ impl SseEncode for crate::DepositEvent {
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <u64>::sse_encode(self.height, serializer);
         <String>::sse_encode(self.txid, serializer);
+        <u64>::sse_encode(self.needed, serializer);
+        <String>::sse_encode(self.msg, serializer);
     }
 }
 
