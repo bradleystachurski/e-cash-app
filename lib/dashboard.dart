@@ -9,6 +9,7 @@ import 'package:carbine/refund.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:intl/intl.dart';
+import 'dart:async';
 
 class Dashboard extends StatefulWidget {
   final FederationSelector fed;
@@ -54,8 +55,12 @@ class _DashboardState extends State<Dashboard> {
         final confirmedEvt =
             (event.eventKind as DepositEventKind_Confirmed).field0;
         print('pattern match confirmed: ${confirmedEvt.txid}');
-        _loadBalance();
-        _loadTransactions();
+        Timer(const Duration(seconds: 5), () {
+          // balance update requires waiting for the claim to finish
+          // this is hacky, perhaps there's a better approach?
+          _loadBalance();
+          _loadTransactions();
+        });
       }
     });
   }
@@ -373,7 +378,7 @@ class _DashboardState extends State<Dashboard> {
                         ):
                           print('pattern matcch awaiting: ${awaitEvt.needed}');
                           msg =
-                              'Tx included in block ${awaitEvt.blockHeight}. Awaiting confs, needed: ${awaitEvt.needed}';
+                              'Tx included in block ${awaitEvt.blockHeight}. Remaining confs: ${awaitEvt.needed}';
                           amount = awaitEvt.amount;
                           break;
                         case DepositEventKind_Confirmed(
