@@ -354,7 +354,6 @@ class _DashboardState extends State<Dashboard> {
                     ),
                   ),
 
-                  // --- On‐chain deposit as a single row ---
                   StreamBuilder<DepositEvent>(
                     stream: depositEvents,
                     builder: (context, snapshot) {
@@ -387,7 +386,7 @@ class _DashboardState extends State<Dashboard> {
                         fontWeight: FontWeight.bold,
                         color: Colors.greenAccent,
                       );
-                      print('amount to format: ${amount}');
+                      print('amount to format: $amount');
                       final formattedAmount = formatBalance(amount, false);
 
                       return Card(

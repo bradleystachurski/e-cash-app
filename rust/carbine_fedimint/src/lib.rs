@@ -1916,14 +1916,11 @@ impl Multimint {
         Ok(())
     }
 
-    pub async fn debug_wallet_stream(
+    async fn check_all_tweak_indexes(
         &self,
         sink: StreamSink<DepositEvent>,
         federation_id: &FederationId,
     ) -> anyhow::Result<()> {
-        let most_recent_unused = self.most_recent_unused_pegin_address(federation_id).await?;
-        println!("most_recent_unused: {:?}", most_recent_unused);
-
         use reqwest::Client;
         use serde_json::Value;
 
@@ -2118,6 +2115,33 @@ impl Multimint {
                     bail!(e)
                 }
             };
+        }
+
+        Ok(())
+    }
+
+    pub async fn debug_wallet_stream(
+        &self,
+        sink: StreamSink<DepositEvent>,
+        federation_id: &FederationId,
+    ) -> anyhow::Result<()> {
+        let most_recent_unused = self.most_recent_unused_pegin_address(federation_id).await?;
+        println!("most_recent_unused: {:?}", most_recent_unused);
+
+        loop {
+            match self
+                .check_all_tweak_indexes(sink.clone(), federation_id)
+                .await
+            {
+                Ok(()) => {
+                    println!("finished checking all tweak indexes, sleeping then trying again");
+                    fedimint_core::runtime::sleep(Duration::from_secs(5)).await;
+                }
+                Err(e) => {
+                    println!("error while checking tweak indexes: {:?}", e);
+                    break;
+                }
+            }
         }
 
         Ok(())
