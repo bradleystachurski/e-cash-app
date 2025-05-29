@@ -1930,7 +1930,9 @@ impl Multimint {
         let wallet_module =
             client.get_first_module::<fedimint_wallet_client::WalletClientModule>()?;
 
-        // TODO: helper to find most recent unused address?
+        // TODO: refactor stream to be long-lived, triggering background tasks for each
+        // address that needs monitoring
+        // also consider other approaches, but that's a good first approach
 
         let mut tweak_idx = TweakIdx(0);
         loop {

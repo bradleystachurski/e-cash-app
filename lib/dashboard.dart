@@ -361,31 +361,40 @@ class _DashboardState extends State<Dashboard> {
                         _loadBalance();
                       }
 
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        child: Row(
-                          children: [
-                            Icon(Icons.download, size: 20, color: statusColor),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'On-Chain Deposit: ${event.msg}, Block: ${event.height}, Need: ${event.needed}',
-                                style: Theme.of(context).textTheme.bodyMedium,
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                      final amountStyle = TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.greenAccent,
+                      );
+                      final formattedAmount = formatBalance(
+                        BigInt.from(10000),
+                        false,
+                      );
+
+                      return Card(
+                        elevation: 4,
+                        margin: const EdgeInsets.symmetric(vertical: 6),
+                        color: Theme.of(context).colorScheme.surface,
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: Colors.greenAccent.withOpacity(
+                              0.1,
                             ),
-                            Chip(
-                              label: Text(
-                                isConfirmed
-                                    ? 'Confirmed'
-                                    : '${event.needed} confs',
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(color: Colors.white),
-                              ),
-                              backgroundColor: statusColor,
-                              visualDensity: VisualDensity.compact,
-                            ),
-                          ],
+                            child: Icon(Icons.link, color: Colors.greenAccent),
+                          ),
+                          title: Text(
+                            "Received",
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                          subtitle: Text(
+                            'On-Chain Deposit: ${event.msg}, Block: ${event.height}, Need: ${event.needed}',
+                            style: Theme.of(context).textTheme.bodyMedium,
+                          ),
+                          // subtitle: Text(
+                          // TODO: get date
+                          //   formattedDate,
+                          //   style: Theme.of(context).textTheme.bodyMedium,
+                          // ),
+                          trailing: Text(formattedAmount, style: amountStyle),
                         ),
                       );
                     },
@@ -393,7 +402,6 @@ class _DashboardState extends State<Dashboard> {
                 ],
               ),
             ),
-            const SizedBox(height: 16),
             isLoadingTransactions
                 ? const CircularProgressIndicator()
                 : _transactions.isEmpty
