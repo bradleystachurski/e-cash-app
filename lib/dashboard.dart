@@ -312,38 +312,115 @@ class _DashboardState extends State<Dashboard> {
 
             const SizedBox(height: 24),
 
+            // Stream for on-chain deposit events
             StreamBuilder<DepositEvent>(
               stream: depositEvents,
               builder: (context, snapshot) {
-                // styling shortcut
-                final style = Theme.of(context).textTheme.bodyLarge;
+                final theme = Theme.of(context);
 
-                // error state
+                // Error state
                 if (snapshot.hasError) {
-                  return Text(
-                    'Error loading deposits: ${snapshot.error}',
-                    style: style,
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Text(
+                      'Error loading deposit events: ${snapshot.error}',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.error,
+                      ),
+                    ),
                   );
                 }
 
-                // loading / no data yet
+                // Loading / no data yet
                 if (!snapshot.hasData) {
-                  return const CircularProgressIndicator();
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Center(child: CircularProgressIndicator()),
+                  );
                 }
-
-                // we have a DepositEvent!
+                // Display the deposit event
                 final event = snapshot.data!;
-                return Card(
-                  margin: const EdgeInsets.symmetric(vertical: 8),
-                  child: ListTile(
-                    leading: const Icon(Icons.download, size: 32),
-                    title: Text('Received deposit event!', style: style),
-                    subtitle: Text('''
-                      ${event.msg}
-                      tx height: ${event.height}
-                      needed: ${event.needed}
-                      ${event.txid}
-                      ''', style: style?.copyWith(fontSize: 12)),
+                final bool isConfirmed = event.needed == BigInt.zero;
+                final statusText =
+                    isConfirmed ? 'Confirmed' : 'Waiting for confirmations';
+                final statusColor =
+                    isConfirmed
+                        ? theme.colorScheme.secondary
+                        : theme.colorScheme.primary;
+
+                return Container(
+                  margin: const EdgeInsets.symmetric(vertical: 16),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.download, size: 28, color: statusColor),
+                          const SizedBox(width: 8),
+                          Text(
+                            'On-Chain Deposit',
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const Spacer(),
+                          Chip(
+                            label: Text(
+                              statusText,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: Colors.white,
+                              ),
+                            ),
+                            backgroundColor: statusColor,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        event.msg,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Block height: ${event.height}',
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Confirmations needed: ${event.needed}',
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                      const SizedBox(height: 8),
+                      if (!isConfirmed && event.needed > BigInt.zero)
+                        LinearProgressIndicator(
+                          value:
+                              0, // replace with actual (currentConfs/needed) when available
+                          minHeight: 4,
+                        ),
+                      const SizedBox(height: 12),
+                      Text('Txid:', style: theme.textTheme.bodySmall),
+                      Text(
+                        event.txid,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          fontFamily: 'monospace',
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ),
                 );
               },
