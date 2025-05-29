@@ -45,7 +45,10 @@ class _DashboardState extends State<Dashboard> {
     _scrollController.addListener(_onScroll);
     _loadBalance();
     _loadTransactions();
-    depositEvents = debugWalletStream(federationId: widget.fed.federationId);
+    depositEvents =
+        debugWalletStream(
+          federationId: widget.fed.federationId,
+        ).asBroadcastStream();
   }
 
   @override
@@ -310,122 +313,6 @@ class _DashboardState extends State<Dashboard> {
               ),
             ),
 
-            const SizedBox(height: 24),
-
-            // Stream for on-chain deposit events
-            StreamBuilder<DepositEvent>(
-              stream: depositEvents,
-              builder: (context, snapshot) {
-                final theme = Theme.of(context);
-
-                // Error state
-                if (snapshot.hasError) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    child: Text(
-                      'Error loading deposit events: ${snapshot.error}',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.error,
-                      ),
-                    ),
-                  );
-                }
-
-                // Loading / no data yet
-                if (!snapshot.hasData) {
-                  return const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 24),
-                    child: Center(child: CircularProgressIndicator()),
-                  );
-                }
-                // Display the deposit event
-                final event = snapshot.data!;
-                final bool isConfirmed = event.needed == BigInt.zero;
-                final statusText =
-                    isConfirmed ? 'Confirmed' : 'Waiting for confirmations';
-                final statusColor =
-                    isConfirmed
-                        ? theme.colorScheme.secondary
-                        : theme.colorScheme.primary;
-
-                return Container(
-                  margin: const EdgeInsets.symmetric(vertical: 16),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surface,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.download, size: 28, color: statusColor),
-                          const SizedBox(width: 8),
-                          Text(
-                            'On-Chain Deposit',
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const Spacer(),
-                          Chip(
-                            label: Text(
-                              statusText,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: Colors.white,
-                              ),
-                            ),
-                            backgroundColor: statusColor,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        event.msg,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Block height: ${event.height}',
-                        style: theme.textTheme.bodyMedium,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Confirmations needed: ${event.needed}',
-                        style: theme.textTheme.bodyMedium,
-                      ),
-                      const SizedBox(height: 8),
-                      if (!isConfirmed && event.needed > BigInt.zero)
-                        LinearProgressIndicator(
-                          value:
-                              0, // replace with actual (currentConfs/needed) when available
-                          minHeight: 4,
-                        ),
-                      const SizedBox(height: 12),
-                      Text('Txid:', style: theme.textTheme.bodySmall),
-                      Text(
-                        event.txid,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          fontFamily: 'monospace',
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-
             const SizedBox(height: 48),
             if (isLoadingBalance)
               const CircularProgressIndicator()
@@ -448,11 +335,62 @@ class _DashboardState extends State<Dashboard> {
             const SizedBox(height: 48),
             Align(
               alignment: Alignment.centerLeft,
-              child: Text(
-                "Recent Transactions",
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Recent Transactions",
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+
+                  // --- On‐chain deposit as a single row ---
+                  StreamBuilder<DepositEvent>(
+                    stream: depositEvents,
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData) return const SizedBox();
+                      final event = snapshot.data!;
+                      final isConfirmed = event.needed == BigInt.zero;
+                      final statusColor =
+                          isConfirmed
+                              ? Theme.of(context).colorScheme.secondary
+                              : Theme.of(context).colorScheme.primary;
+
+                      if (isConfirmed) {
+                        _loadBalance();
+                      }
+
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Row(
+                          children: [
+                            Icon(Icons.download, size: 20, color: statusColor),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'On-Chain Deposit: ${event.msg}, Block: ${event.height}, Need: ${event.needed}',
+                                style: Theme.of(context).textTheme.bodyMedium,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            Chip(
+                              label: Text(
+                                isConfirmed
+                                    ? 'Confirmed'
+                                    : '${event.needed} confs',
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(color: Colors.white),
+                              ),
+                              backgroundColor: statusColor,
+                              visualDensity: VisualDensity.compact,
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 16),
