@@ -346,31 +346,35 @@ pub async fn debug_wallet(federation_id: &FederationId) -> anyhow::Result<()> {
 }
 
 #[derive(Clone, Eq, PartialEq, Serialize, Debug)]
-pub struct DepositEvent {
-    height: u64,
+pub struct MempoolEvent {
+    amount: u64,
     txid: String,
-    needed: u64,
-    msg: String,
 }
 
-#[frb]
-pub async fn thingy(sink: StreamSink<DepositEvent>) -> anyhow::Result<()> {
-    let mut height = 0;
-    while height < 10 {
-        let deposit_event = DepositEvent {
-            height,
-            txid: "fake_txid".to_string(),
-            needed: u64::MAX,
-            msg: "thingy event".to_string(),
-        };
-        if let Err(_e) = sink.add(deposit_event) {
-            break;
-        }
-        height += 1;
-        fedimint_core::runtime::sleep(Duration::from_secs(5)).await;
-    }
+#[derive(Clone, Eq, PartialEq, Serialize, Debug)]
+pub struct AwaitingConfsEvent {
+    amount: u64,
+    txid: String,
+    block_height: u64,
+    needed: u64,
+}
 
-    Ok(())
+#[derive(Clone, Eq, PartialEq, Serialize, Debug)]
+pub struct ConfirmedEvent {
+    amount: u64,
+    txid: String,
+}
+
+#[derive(Clone, Eq, PartialEq, Serialize, Debug)]
+pub enum DepositEventKind {
+    Mempool(MempoolEvent),
+    AwaitingConfs(AwaitingConfsEvent),
+    Confirmed(ConfirmedEvent),
+}
+
+#[derive(Clone, Eq, PartialEq, Serialize, Debug)]
+pub struct DepositEvent {
+    event_kind: DepositEventKind,
 }
 
 #[frb]
@@ -1960,14 +1964,6 @@ impl Multimint {
                             match item {
                                 DepositStateV2::WaitingForTransaction => {
                                     println!("deposit not seen yet");
-                                    let deposit_event = DepositEvent {
-                                        height: 0,
-                                        txid: "not yet".into(),
-                                        needed: u64::MAX,
-                                        msg: "deposit not seen yet".into(),
-                                    };
-                                    sink.add(deposit_event)
-                                        .expect("couldn't add deposit event to stream");
                                 }
                                 DepositStateV2::WaitingForConfirmation {
                                     btc_deposited,
@@ -1979,21 +1975,20 @@ impl Multimint {
                                     println!("btc_out_point: {:?}", btc_out_point);
 
                                     let deposit_event = DepositEvent {
-                                        height: 0,
-                                        txid: btc_out_point.txid.to_string(),
-                                        needed: u64::MAX,
-                                        msg: "tx seen in mempool".into(),
+                                        event_kind: DepositEventKind::Mempool(MempoolEvent {
+                                            // pretty messy, curious if we can improve units overall
+                                            amount: Amount::from_sats(btc_deposited.to_sat()).msats,
+                                            txid: btc_out_point.txid.to_string(),
+                                        }),
                                     };
+
                                     sink.add(deposit_event)
                                         .expect("couldn't add deposit event to stream");
 
-                                    println!("creating new client");
                                     let client = Client::new();
-                                    println!("created new client");
 
                                     // let api_url = "https://mutinynet.com/api".to_string();
                                     let api_url = "http://localhost:22281".to_string();
-                                    println!("making calls to get tx height");
 
                                     let tx_height = fedimint_core::util::retry(
                                         "get confirmed block height",
@@ -2015,6 +2010,7 @@ impl Multimint {
                                             println!("mutinynet resp");
                                             println!("{:?}", resp);
 
+                                            // TODO: handle mempool event here instead of just retrying
                                             serde_json::from_str::<Value>(&resp)?
                                                 .get("status")
                                                 .and_then(|s| s.get("block_height"))
@@ -2052,10 +2048,17 @@ impl Multimint {
                                             dbg!(needed);
 
                                             let deposit_event = DepositEvent {
-                                                height: tx_height,
-                                                txid: btc_out_point.txid.to_string(),
-                                                needed,
-                                                msg: "waiting for confs".into(),
+                                                event_kind: DepositEventKind::AwaitingConfs(
+                                                    AwaitingConfsEvent {
+                                                        amount: Amount::from_sats(
+                                                            btc_deposited.to_sat(),
+                                                        )
+                                                        .msats,
+                                                        txid: btc_out_point.txid.to_string(),
+                                                        block_height: tx_height,
+                                                        needed,
+                                                    },
+                                                ),
                                             };
                                             sink.add(deposit_event)
                                                 .expect("couldn't add deposit event to stream");
@@ -2076,7 +2079,22 @@ impl Multimint {
                                     // trigger another check of pegin monitor for faster claim
                                     wallet_module.recheck_pegin_address(tweak_idx).await?;
                                 }
-                                DepositStateV2::Confirmed { .. } => {
+                                DepositStateV2::Confirmed {
+                                    btc_deposited,
+                                    btc_out_point,
+                                } => {
+                                    // TODO: should we emit a confirmed event?
+                                    // probably, but a larger refactor overall is needed
+
+                                    let deposit_event = DepositEvent {
+                                        event_kind: DepositEventKind::Confirmed(ConfirmedEvent {
+                                            amount: Amount::from_sats(btc_deposited.to_sat()).msats,
+                                            txid: btc_out_point.txid.to_string(),
+                                        }),
+                                    };
+                                    sink.add(deposit_event)
+                                        .expect("couldn't add deposit event to stream");
+
                                     println!("tx confirmed");
                                 }
                                 DepositStateV2::Claimed { .. } => {

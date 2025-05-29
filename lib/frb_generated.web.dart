@@ -308,13 +308,31 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String dco_decode_String(dynamic raw);
 
   @protected
+  AwaitingConfsEvent dco_decode_awaiting_confs_event(dynamic raw);
+
+  @protected
   bool dco_decode_bool(dynamic raw);
+
+  @protected
+  AwaitingConfsEvent dco_decode_box_autoadd_awaiting_confs_event(dynamic raw);
+
+  @protected
+  ConfirmedEvent dco_decode_box_autoadd_confirmed_event(dynamic raw);
+
+  @protected
+  MempoolEvent dco_decode_box_autoadd_mempool_event(dynamic raw);
 
   @protected
   BigInt dco_decode_box_autoadd_u_64(dynamic raw);
 
   @protected
+  ConfirmedEvent dco_decode_confirmed_event(dynamic raw);
+
+  @protected
   DepositEvent dco_decode_deposit_event(dynamic raw);
+
+  @protected
+  DepositEventKind dco_decode_deposit_event_kind(dynamic raw);
 
   @protected
   FederationMeta dco_decode_federation_meta(dynamic raw);
@@ -345,6 +363,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<Transaction> dco_decode_list_transaction(dynamic raw);
+
+  @protected
+  MempoolEvent dco_decode_mempool_event(dynamic raw);
 
   @protected
   String? dco_decode_opt_String(dynamic raw);
@@ -639,13 +660,39 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   String sse_decode_String(SseDeserializer deserializer);
 
   @protected
+  AwaitingConfsEvent sse_decode_awaiting_confs_event(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   bool sse_decode_bool(SseDeserializer deserializer);
+
+  @protected
+  AwaitingConfsEvent sse_decode_box_autoadd_awaiting_confs_event(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  ConfirmedEvent sse_decode_box_autoadd_confirmed_event(
+    SseDeserializer deserializer,
+  );
+
+  @protected
+  MempoolEvent sse_decode_box_autoadd_mempool_event(
+    SseDeserializer deserializer,
+  );
 
   @protected
   BigInt sse_decode_box_autoadd_u_64(SseDeserializer deserializer);
 
   @protected
+  ConfirmedEvent sse_decode_confirmed_event(SseDeserializer deserializer);
+
+  @protected
   DepositEvent sse_decode_deposit_event(SseDeserializer deserializer);
+
+  @protected
+  DepositEventKind sse_decode_deposit_event_kind(SseDeserializer deserializer);
 
   @protected
   FederationMeta sse_decode_federation_meta(SseDeserializer deserializer);
@@ -676,6 +723,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   List<Transaction> sse_decode_list_transaction(SseDeserializer deserializer);
+
+  @protected
+  MempoolEvent sse_decode_mempool_event(SseDeserializer deserializer);
 
   @protected
   String? sse_decode_opt_String(SseDeserializer deserializer);
@@ -1014,13 +1064,49 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   void sse_encode_String(String self, SseSerializer serializer);
 
   @protected
+  void sse_encode_awaiting_confs_event(
+    AwaitingConfsEvent self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_bool(bool self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_box_autoadd_awaiting_confs_event(
+    AwaitingConfsEvent self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_confirmed_event(
+    ConfirmedEvent self,
+    SseSerializer serializer,
+  );
+
+  @protected
+  void sse_encode_box_autoadd_mempool_event(
+    MempoolEvent self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_box_autoadd_u_64(BigInt self, SseSerializer serializer);
 
   @protected
+  void sse_encode_confirmed_event(
+    ConfirmedEvent self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_deposit_event(DepositEvent self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_deposit_event_kind(
+    DepositEventKind self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_federation_meta(
@@ -1062,6 +1148,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
     List<Transaction> self,
     SseSerializer serializer,
   );
+
+  @protected
+  void sse_encode_mempool_event(MempoolEvent self, SseSerializer serializer);
 
   @protected
   void sse_encode_opt_String(String? self, SseSerializer serializer);

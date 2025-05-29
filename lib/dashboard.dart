@@ -351,24 +351,42 @@ class _DashboardState extends State<Dashboard> {
                     builder: (context, snapshot) {
                       if (!snapshot.hasData) return const SizedBox();
                       final event = snapshot.data!;
-                      final isConfirmed = event.needed == BigInt.zero;
-                      final statusColor =
-                          isConfirmed
-                              ? Theme.of(context).colorScheme.secondary
-                              : Theme.of(context).colorScheme.primary;
 
-                      if (isConfirmed) {
-                        _loadBalance();
+                      String msg;
+                      BigInt amount;
+                      switch (event.eventKind) {
+                        case DepositEventKind_Mempool(field0: final mempoolEvt):
+                          print('pattern match mempool: ${mempoolEvt.amount}');
+                          msg = 'Tx seen in mempool';
+                          amount = mempoolEvt.amount;
+                          break;
+                        case DepositEventKind_AwaitingConfs(
+                          field0: final awaitEvt,
+                        ):
+                          print('pattern matcch awaiting: ${awaitEvt.needed}');
+                          msg =
+                              'Tx included in block ${awaitEvt.blockHeight}. Awaiting confs, needed: ${awaitEvt.needed}';
+                          amount = awaitEvt.amount;
+                          break;
+                        case DepositEventKind_Confirmed(
+                          field0: final confirmedEvt,
+                        ):
+                          print(
+                            'pattern match confirmed: ${confirmedEvt.txid}',
+                          );
+                          _loadBalance();
+                          _loadTransactions;
+                          // TODO: this seems wrong, just polls agressively with
+                          // the print statement that mattern match confirmed
+                          return const SizedBox();
                       }
 
                       final amountStyle = TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Colors.greenAccent,
                       );
-                      final formattedAmount = formatBalance(
-                        BigInt.from(10000),
-                        false,
-                      );
+                      print('amount to format: ${amount}');
+                      final formattedAmount = formatBalance(amount, false);
 
                       return Card(
                         elevation: 4,
@@ -379,14 +397,14 @@ class _DashboardState extends State<Dashboard> {
                             backgroundColor: Colors.greenAccent.withOpacity(
                               0.1,
                             ),
-                            child: Icon(Icons.link, color: Colors.greenAccent),
+                            child: Icon(Icons.link, color: Colors.yellowAccent),
                           ),
                           title: Text(
                             "Received",
                             style: Theme.of(context).textTheme.bodyMedium,
                           ),
                           subtitle: Text(
-                            'On-Chain Deposit: ${event.msg}, Block: ${event.height}, Need: ${event.needed}',
+                            msg,
                             style: Theme.of(context).textTheme.bodyMedium,
                           ),
                           // subtitle: Text(

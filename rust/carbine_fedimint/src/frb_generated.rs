@@ -39,7 +39,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.9.0";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1150395090;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -131253112;
 
 // Section: executor
 
@@ -3693,45 +3693,6 @@ fn wire__crate__send_lnaddress_impl(
         },
     )
 }
-fn wire__crate__thingy_impl(
-    port_: flutter_rust_bridge::for_generated::MessagePort,
-    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
-    rust_vec_len_: i32,
-    data_len_: i32,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_async::<flutter_rust_bridge::for_generated::SseCodec, _, _, _>(
-        flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "thingy",
-            port: Some(port_),
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
-        },
-        move || {
-            let message = unsafe {
-                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
-                    ptr_,
-                    rust_vec_len_,
-                    data_len_,
-                )
-            };
-            let mut deserializer =
-                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            let api_sink = <StreamSink<
-                crate::DepositEvent,
-                flutter_rust_bridge::for_generated::SseCodec,
-            >>::sse_decode(&mut deserializer);
-            deserializer.end();
-            move |context| async move {
-                transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
-                    (move || async move {
-                        let output_ok = crate::thingy(api_sink).await?;
-                        Ok(output_ok)
-                    })()
-                    .await,
-                )
-            }
-        },
-    )
-}
 fn wire__crate__transactions_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -4158,6 +4119,22 @@ impl SseDecode for String {
     }
 }
 
+impl SseDecode for crate::AwaitingConfsEvent {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_amount = <u64>::sse_decode(deserializer);
+        let mut var_txid = <String>::sse_decode(deserializer);
+        let mut var_blockHeight = <u64>::sse_decode(deserializer);
+        let mut var_needed = <u64>::sse_decode(deserializer);
+        return crate::AwaitingConfsEvent {
+            amount: var_amount,
+            txid: var_txid,
+            block_height: var_blockHeight,
+            needed: var_needed,
+        };
+    }
+}
+
 impl SseDecode for bool {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -4165,19 +4142,49 @@ impl SseDecode for bool {
     }
 }
 
+impl SseDecode for crate::ConfirmedEvent {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_amount = <u64>::sse_decode(deserializer);
+        let mut var_txid = <String>::sse_decode(deserializer);
+        return crate::ConfirmedEvent {
+            amount: var_amount,
+            txid: var_txid,
+        };
+    }
+}
+
 impl SseDecode for crate::DepositEvent {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
-        let mut var_height = <u64>::sse_decode(deserializer);
-        let mut var_txid = <String>::sse_decode(deserializer);
-        let mut var_needed = <u64>::sse_decode(deserializer);
-        let mut var_msg = <String>::sse_decode(deserializer);
+        let mut var_eventKind = <crate::DepositEventKind>::sse_decode(deserializer);
         return crate::DepositEvent {
-            height: var_height,
-            txid: var_txid,
-            needed: var_needed,
-            msg: var_msg,
+            event_kind: var_eventKind,
         };
+    }
+}
+
+impl SseDecode for crate::DepositEventKind {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut tag_ = <i32>::sse_decode(deserializer);
+        match tag_ {
+            0 => {
+                let mut var_field0 = <crate::MempoolEvent>::sse_decode(deserializer);
+                return crate::DepositEventKind::Mempool(var_field0);
+            }
+            1 => {
+                let mut var_field0 = <crate::AwaitingConfsEvent>::sse_decode(deserializer);
+                return crate::DepositEventKind::AwaitingConfs(var_field0);
+            }
+            2 => {
+                let mut var_field0 = <crate::ConfirmedEvent>::sse_decode(deserializer);
+                return crate::DepositEventKind::Confirmed(var_field0);
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
     }
 }
 
@@ -4276,6 +4283,18 @@ impl SseDecode for Vec<crate::Transaction> {
             ans_.push(<crate::Transaction>::sse_decode(deserializer));
         }
         return ans_;
+    }
+}
+
+impl SseDecode for crate::MempoolEvent {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_amount = <u64>::sse_decode(deserializer);
+        let mut var_txid = <String>::sse_decode(deserializer);
+        return crate::MempoolEvent {
+            amount: var_amount,
+            txid: var_txid,
+        };
     }
 }
 
@@ -4498,8 +4517,7 @@ fn pde_ffi_dispatcher_primary_impl(
         65 => wire__crate__send_impl(port, ptr, rust_vec_len, data_len),
         66 => wire__crate__send_ecash_impl(port, ptr, rust_vec_len, data_len),
         67 => wire__crate__send_lnaddress_impl(port, ptr, rust_vec_len, data_len),
-        68 => wire__crate__thingy_impl(port, ptr, rust_vec_len, data_len),
-        69 => wire__crate__transactions_impl(port, ptr, rust_vec_len, data_len),
+        68 => wire__crate__transactions_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }
@@ -4903,20 +4921,73 @@ impl flutter_rust_bridge::IntoIntoDart<FrbWrapper<SpendOOBState>> for SpendOOBSt
 }
 
 // Codec=Dco (DartCObject based), see doc to use other codecs
-impl flutter_rust_bridge::IntoDart for crate::DepositEvent {
+impl flutter_rust_bridge::IntoDart for crate::AwaitingConfsEvent {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
-            self.height.into_into_dart().into_dart(),
+            self.amount.into_into_dart().into_dart(),
             self.txid.into_into_dart().into_dart(),
+            self.block_height.into_into_dart().into_dart(),
             self.needed.into_into_dart().into_dart(),
-            self.msg.into_into_dart().into_dart(),
         ]
         .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::AwaitingConfsEvent {}
+impl flutter_rust_bridge::IntoIntoDart<crate::AwaitingConfsEvent> for crate::AwaitingConfsEvent {
+    fn into_into_dart(self) -> crate::AwaitingConfsEvent {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::ConfirmedEvent {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.amount.into_into_dart().into_dart(),
+            self.txid.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::ConfirmedEvent {}
+impl flutter_rust_bridge::IntoIntoDart<crate::ConfirmedEvent> for crate::ConfirmedEvent {
+    fn into_into_dart(self) -> crate::ConfirmedEvent {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::DepositEvent {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [self.event_kind.into_into_dart().into_dart()].into_dart()
     }
 }
 impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::DepositEvent {}
 impl flutter_rust_bridge::IntoIntoDart<crate::DepositEvent> for crate::DepositEvent {
     fn into_into_dart(self) -> crate::DepositEvent {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::DepositEventKind {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        match self {
+            crate::DepositEventKind::Mempool(field0) => {
+                [0.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::DepositEventKind::AwaitingConfs(field0) => {
+                [1.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::DepositEventKind::Confirmed(field0) => {
+                [2.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::DepositEventKind {}
+impl flutter_rust_bridge::IntoIntoDart<crate::DepositEventKind> for crate::DepositEventKind {
+    fn into_into_dart(self) -> crate::DepositEventKind {
         self
     }
 }
@@ -4950,6 +5021,22 @@ impl flutter_rust_bridge::IntoDart for crate::Guardian {
 impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::Guardian {}
 impl flutter_rust_bridge::IntoIntoDart<crate::Guardian> for crate::Guardian {
     fn into_into_dart(self) -> crate::Guardian {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::MempoolEvent {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.amount.into_into_dart().into_dart(),
+            self.txid.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::MempoolEvent {}
+impl flutter_rust_bridge::IntoIntoDart<crate::MempoolEvent> for crate::MempoolEvent {
+    fn into_into_dart(self) -> crate::MempoolEvent {
         self
     }
 }
@@ -5289,6 +5376,16 @@ impl SseEncode for String {
     }
 }
 
+impl SseEncode for crate::AwaitingConfsEvent {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <u64>::sse_encode(self.amount, serializer);
+        <String>::sse_encode(self.txid, serializer);
+        <u64>::sse_encode(self.block_height, serializer);
+        <u64>::sse_encode(self.needed, serializer);
+    }
+}
+
 impl SseEncode for bool {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -5296,13 +5393,41 @@ impl SseEncode for bool {
     }
 }
 
+impl SseEncode for crate::ConfirmedEvent {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <u64>::sse_encode(self.amount, serializer);
+        <String>::sse_encode(self.txid, serializer);
+    }
+}
+
 impl SseEncode for crate::DepositEvent {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
-        <u64>::sse_encode(self.height, serializer);
-        <String>::sse_encode(self.txid, serializer);
-        <u64>::sse_encode(self.needed, serializer);
-        <String>::sse_encode(self.msg, serializer);
+        <crate::DepositEventKind>::sse_encode(self.event_kind, serializer);
+    }
+}
+
+impl SseEncode for crate::DepositEventKind {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        match self {
+            crate::DepositEventKind::Mempool(field0) => {
+                <i32>::sse_encode(0, serializer);
+                <crate::MempoolEvent>::sse_encode(field0, serializer);
+            }
+            crate::DepositEventKind::AwaitingConfs(field0) => {
+                <i32>::sse_encode(1, serializer);
+                <crate::AwaitingConfsEvent>::sse_encode(field0, serializer);
+            }
+            crate::DepositEventKind::Confirmed(field0) => {
+                <i32>::sse_encode(2, serializer);
+                <crate::ConfirmedEvent>::sse_encode(field0, serializer);
+            }
+            _ => {
+                unimplemented!("");
+            }
+        }
     }
 }
 
@@ -5380,6 +5505,14 @@ impl SseEncode for Vec<crate::Transaction> {
         for item in self {
             <crate::Transaction>::sse_encode(item, serializer);
         }
+    }
+}
+
+impl SseEncode for crate::MempoolEvent {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <u64>::sse_encode(self.amount, serializer);
+        <String>::sse_encode(self.txid, serializer);
     }
 }
 

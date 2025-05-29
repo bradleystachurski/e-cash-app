@@ -63,7 +63,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.9.0';
 
   @override
-  int get rustContentHash => -1150395090;
+  int get rustContentHash => -131253112;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -372,8 +372,6 @@ abstract class RustLibApi extends BaseApi {
     required BigInt amountMsats,
     required String address,
   });
-
-  Stream<DepositEvent> crateThingy();
 
   Future<List<Transaction>> crateTransactions({
     required FederationId federationId,
@@ -2907,38 +2905,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
-  Stream<DepositEvent> crateThingy() {
-    final sink = RustStreamSink<DepositEvent>();
-    unawaited(
-      handler.executeNormal(
-        NormalTask(
-          callFfi: (port_) {
-            final serializer = SseSerializer(generalizedFrbRustBinding);
-            sse_encode_StreamSink_deposit_event_Sse(sink, serializer);
-            pdeCallFfi(
-              generalizedFrbRustBinding,
-              serializer,
-              funcId: 68,
-              port: port_,
-            );
-          },
-          codec: SseCodec(
-            decodeSuccessData: sse_decode_unit,
-            decodeErrorData: sse_decode_AnyhowException,
-          ),
-          constMeta: kCrateThingyConstMeta,
-          argValues: [sink],
-          apiImpl: this,
-        ),
-      ),
-    );
-    return sink.stream;
-  }
-
-  TaskConstMeta get kCrateThingyConstMeta =>
-      const TaskConstMeta(debugName: "thingy", argNames: ["sink"]);
-
-  @override
   Future<List<Transaction>> crateTransactions({
     required FederationId federationId,
     BigInt? timestamp,
@@ -2959,7 +2925,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 69,
+            funcId: 68,
             port: port_,
           );
         },
@@ -3457,9 +3423,41 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  AwaitingConfsEvent dco_decode_awaiting_confs_event(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 4)
+      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
+    return AwaitingConfsEvent(
+      amount: dco_decode_u_64(arr[0]),
+      txid: dco_decode_String(arr[1]),
+      blockHeight: dco_decode_u_64(arr[2]),
+      needed: dco_decode_u_64(arr[3]),
+    );
+  }
+
+  @protected
   bool dco_decode_bool(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as bool;
+  }
+
+  @protected
+  AwaitingConfsEvent dco_decode_box_autoadd_awaiting_confs_event(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_awaiting_confs_event(raw);
+  }
+
+  @protected
+  ConfirmedEvent dco_decode_box_autoadd_confirmed_event(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_confirmed_event(raw);
+  }
+
+  @protected
+  MempoolEvent dco_decode_box_autoadd_mempool_event(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_mempool_event(raw);
   }
 
   @protected
@@ -3469,17 +3467,45 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  ConfirmedEvent dco_decode_confirmed_event(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return ConfirmedEvent(
+      amount: dco_decode_u_64(arr[0]),
+      txid: dco_decode_String(arr[1]),
+    );
+  }
+
+  @protected
   DepositEvent dco_decode_deposit_event(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 4)
-      throw Exception('unexpected arr length: expect 4 but see ${arr.length}');
-    return DepositEvent(
-      height: dco_decode_u_64(arr[0]),
-      txid: dco_decode_String(arr[1]),
-      needed: dco_decode_u_64(arr[2]),
-      msg: dco_decode_String(arr[3]),
-    );
+    if (arr.length != 1)
+      throw Exception('unexpected arr length: expect 1 but see ${arr.length}');
+    return DepositEvent(eventKind: dco_decode_deposit_event_kind(arr[0]));
+  }
+
+  @protected
+  DepositEventKind dco_decode_deposit_event_kind(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    switch (raw[0]) {
+      case 0:
+        return DepositEventKind_Mempool(
+          dco_decode_box_autoadd_mempool_event(raw[1]),
+        );
+      case 1:
+        return DepositEventKind_AwaitingConfs(
+          dco_decode_box_autoadd_awaiting_confs_event(raw[1]),
+        );
+      case 2:
+        return DepositEventKind_Confirmed(
+          dco_decode_box_autoadd_confirmed_event(raw[1]),
+        );
+      default:
+        throw Exception("unreachable");
+    }
   }
 
   @protected
@@ -3555,6 +3581,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   List<Transaction> dco_decode_list_transaction(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return (raw as List<dynamic>).map(dco_decode_transaction).toList();
+  }
+
+  @protected
+  MempoolEvent dco_decode_mempool_event(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return MempoolEvent(
+      amount: dco_decode_u_64(arr[0]),
+      txid: dco_decode_String(arr[1]),
+    );
   }
 
   @protected
@@ -4204,9 +4242,50 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  AwaitingConfsEvent sse_decode_awaiting_confs_event(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_amount = sse_decode_u_64(deserializer);
+    var var_txid = sse_decode_String(deserializer);
+    var var_blockHeight = sse_decode_u_64(deserializer);
+    var var_needed = sse_decode_u_64(deserializer);
+    return AwaitingConfsEvent(
+      amount: var_amount,
+      txid: var_txid,
+      blockHeight: var_blockHeight,
+      needed: var_needed,
+    );
+  }
+
+  @protected
   bool sse_decode_bool(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getUint8() != 0;
+  }
+
+  @protected
+  AwaitingConfsEvent sse_decode_box_autoadd_awaiting_confs_event(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_awaiting_confs_event(deserializer));
+  }
+
+  @protected
+  ConfirmedEvent sse_decode_box_autoadd_confirmed_event(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_confirmed_event(deserializer));
+  }
+
+  @protected
+  MempoolEvent sse_decode_box_autoadd_mempool_event(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_mempool_event(deserializer));
   }
 
   @protected
@@ -4216,18 +4295,40 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  ConfirmedEvent sse_decode_confirmed_event(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_amount = sse_decode_u_64(deserializer);
+    var var_txid = sse_decode_String(deserializer);
+    return ConfirmedEvent(amount: var_amount, txid: var_txid);
+  }
+
+  @protected
   DepositEvent sse_decode_deposit_event(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    var var_height = sse_decode_u_64(deserializer);
-    var var_txid = sse_decode_String(deserializer);
-    var var_needed = sse_decode_u_64(deserializer);
-    var var_msg = sse_decode_String(deserializer);
-    return DepositEvent(
-      height: var_height,
-      txid: var_txid,
-      needed: var_needed,
-      msg: var_msg,
-    );
+    var var_eventKind = sse_decode_deposit_event_kind(deserializer);
+    return DepositEvent(eventKind: var_eventKind);
+  }
+
+  @protected
+  DepositEventKind sse_decode_deposit_event_kind(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    var tag_ = sse_decode_i_32(deserializer);
+    switch (tag_) {
+      case 0:
+        var var_field0 = sse_decode_box_autoadd_mempool_event(deserializer);
+        return DepositEventKind_Mempool(var_field0);
+      case 1:
+        var var_field0 = sse_decode_box_autoadd_awaiting_confs_event(
+          deserializer,
+        );
+        return DepositEventKind_AwaitingConfs(var_field0);
+      case 2:
+        var var_field0 = sse_decode_box_autoadd_confirmed_event(deserializer);
+        return DepositEventKind_Confirmed(var_field0);
+      default:
+        throw UnimplementedError('');
+    }
   }
 
   @protected
@@ -4330,6 +4431,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       ans_.add(sse_decode_transaction(deserializer));
     }
     return ans_;
+  }
+
+  @protected
+  MempoolEvent sse_decode_mempool_event(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_amount = sse_decode_u_64(deserializer);
+    var var_txid = sse_decode_String(deserializer);
+    return MempoolEvent(amount: var_amount, txid: var_txid);
   }
 
   @protected
@@ -5031,9 +5140,48 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_awaiting_confs_event(
+    AwaitingConfsEvent self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_u_64(self.amount, serializer);
+    sse_encode_String(self.txid, serializer);
+    sse_encode_u_64(self.blockHeight, serializer);
+    sse_encode_u_64(self.needed, serializer);
+  }
+
+  @protected
   void sse_encode_bool(bool self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putUint8(self ? 1 : 0);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_awaiting_confs_event(
+    AwaitingConfsEvent self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_awaiting_confs_event(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_confirmed_event(
+    ConfirmedEvent self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_confirmed_event(self, serializer);
+  }
+
+  @protected
+  void sse_encode_box_autoadd_mempool_event(
+    MempoolEvent self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_mempool_event(self, serializer);
   }
 
   @protected
@@ -5043,12 +5191,38 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_confirmed_event(
+    ConfirmedEvent self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_u_64(self.amount, serializer);
+    sse_encode_String(self.txid, serializer);
+  }
+
+  @protected
   void sse_encode_deposit_event(DepositEvent self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    sse_encode_u_64(self.height, serializer);
-    sse_encode_String(self.txid, serializer);
-    sse_encode_u_64(self.needed, serializer);
-    sse_encode_String(self.msg, serializer);
+    sse_encode_deposit_event_kind(self.eventKind, serializer);
+  }
+
+  @protected
+  void sse_encode_deposit_event_kind(
+    DepositEventKind self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    switch (self) {
+      case DepositEventKind_Mempool(field0: final field0):
+        sse_encode_i_32(0, serializer);
+        sse_encode_box_autoadd_mempool_event(field0, serializer);
+      case DepositEventKind_AwaitingConfs(field0: final field0):
+        sse_encode_i_32(1, serializer);
+        sse_encode_box_autoadd_awaiting_confs_event(field0, serializer);
+      case DepositEventKind_Confirmed(field0: final field0):
+        sse_encode_i_32(2, serializer);
+        sse_encode_box_autoadd_confirmed_event(field0, serializer);
+    }
   }
 
   @protected
@@ -5139,6 +5313,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     for (final item in self) {
       sse_encode_transaction(item, serializer);
     }
+  }
+
+  @protected
+  void sse_encode_mempool_event(MempoolEvent self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_u_64(self.amount, serializer);
+    sse_encode_String(self.txid, serializer);
   }
 
   @protected
