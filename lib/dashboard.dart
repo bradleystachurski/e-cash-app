@@ -39,8 +39,9 @@ class _DashboardState extends State<Dashboard> {
   VoidCallback? _pendingAction;
 
   late Stream<DepositEvent> depositEvents;
-  final Map<String, DepositEvent> _depositMap = {};
+  late StreamSubscription<DepositEvent> _claimSubscription;
   late StreamSubscription<DepositEvent> _depositSubscription;
+  final Map<String, DepositEvent> _depositMap = {};
 
   @override
   void initState() {
@@ -52,24 +53,20 @@ class _DashboardState extends State<Dashboard> {
         subscribeDeposits(
           federationId: widget.fed.federationId,
         ).asBroadcastStream();
-    depositEvents.listen((event) {
+    // 1) reload balance/txs on claim, but guard against unmounted
+    _claimSubscription = depositEvents.listen((event) {
       if (event.eventKind is DepositEventKind_Claimed) {
         final claimedEvt = (event.eventKind as DepositEventKind_Claimed).field0;
         print('pattern match claimed: ${claimedEvt.txid}');
-        // Timer(const Duration(seconds: 5), () {
-        //   // balance update requires waiting for the claim to finish
-        //   // this is hacky, perhaps there's a better approach?
-        //   _loadBalance();
-        //   _loadTransactions();
-        // });
+        if (!mounted) return;
         _loadBalance();
         Timer(const Duration(milliseconds: 100), () {
-          // transactions update requires waiting for the claim to finish
-          // this is hacky, perhaps there's a better approach?
+          if (!mounted) return;
           _loadTransactions();
         });
       }
     });
+
     _depositSubscription = depositEvents.listen((event) {
       String txid;
       switch (event.eventKind) {
@@ -96,6 +93,7 @@ class _DashboardState extends State<Dashboard> {
   void dispose() {
     _scrollController.dispose();
     _depositSubscription.cancel();
+    _claimSubscription.cancel();
     super.dispose();
   }
 
@@ -138,6 +136,7 @@ class _DashboardState extends State<Dashboard> {
 
   Future<void> _loadBalance() async {
     final bal = await balance(federationId: widget.fed.federationId);
+    if (!mounted) return;
     setState(() {
       balanceMsats = bal;
       isLoadingBalance = false;
@@ -149,12 +148,14 @@ class _DashboardState extends State<Dashboard> {
     _isFetchingMore = true;
 
     if (!loadMore) {
-      setState(() {
-        isLoadingTransactions = true;
-        _transactions.clear();
-        _hasMore = true;
-        _lastTransaction = null;
-      });
+      if (mounted) {
+        setState(() {
+          isLoadingTransactions = true;
+          _transactions.clear();
+          _hasMore = true;
+          _lastTransaction = null;
+        });
+      }
     }
 
     final newTxs = await transactions(
@@ -164,6 +165,7 @@ class _DashboardState extends State<Dashboard> {
       modules: _getKindsForSelectedPaymentType(),
     );
 
+    if (!mounted) return;
     setState(() {
       _transactions.addAll(newTxs);
       if (newTxs.length < 10) {
