@@ -425,7 +425,7 @@ class _DashboardState extends State<Dashboard> {
                         BigInt amount;
                         switch (event.eventKind) {
                           case DepositEventKind_Mempool(field0: final e):
-                            msg = 'Tx seen in mempool';
+                            msg = 'Tx in mempool';
                             amount = e.amount;
                             break;
                           case DepositEventKind_AwaitingConfs(field0: final e):
@@ -465,7 +465,7 @@ class _DashboardState extends State<Dashboard> {
                               ),
                             ),
                             title: Text(
-                              "Received",
+                              "Pending Receive",
                               style: Theme.of(context).textTheme.bodyMedium,
                             ),
                             subtitle: Text(
