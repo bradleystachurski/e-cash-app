@@ -394,8 +394,33 @@ class _DashboardState extends State<Dashboard> {
                       physics: NeverScrollableScrollPhysics(),
                       itemCount: _depositMap.length,
                       itemBuilder: (context, index) {
-                        final txids = _depositMap.keys.toList()..sort();
-                        final event = _depositMap[txids[index]]!;
+                        final events =
+                            _depositMap.values.toList()..sort((a, b) {
+                              final aMempool =
+                                  a.eventKind is DepositEventKind_Mempool;
+                              final bMempool =
+                                  b.eventKind is DepositEventKind_Mempool;
+                              if (aMempool && !bMempool) return -1;
+                              if (!aMempool && bMempool) return 1;
+                              // both mempool or both non-mempool: compare needed confs
+                              final BigInt na =
+                                  a.eventKind is DepositEventKind_AwaitingConfs
+                                      ? (a.eventKind
+                                              as DepositEventKind_AwaitingConfs)
+                                          .field0
+                                          .needed
+                                      : BigInt.zero;
+                              final BigInt nb =
+                                  b.eventKind is DepositEventKind_AwaitingConfs
+                                      ? (b.eventKind
+                                              as DepositEventKind_AwaitingConfs)
+                                          .field0
+                                          .needed
+                                      : BigInt.zero;
+                              return nb.compareTo(na);
+                            });
+                        final event = events[index];
+
                         String msg;
                         BigInt amount;
                         switch (event.eventKind) {
