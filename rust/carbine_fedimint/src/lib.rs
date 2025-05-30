@@ -366,10 +366,17 @@ pub struct ConfirmedEvent {
 }
 
 #[derive(Clone, Eq, PartialEq, Serialize, Debug)]
+pub struct ClaimedEvent {
+    amount: u64,
+    txid: String,
+}
+
+#[derive(Clone, Eq, PartialEq, Serialize, Debug)]
 pub enum DepositEventKind {
     Mempool(MempoolEvent),
     AwaitingConfs(AwaitingConfsEvent),
     Confirmed(ConfirmedEvent),
+    Claimed(ClaimedEvent),
 }
 
 #[derive(Clone, Eq, PartialEq, Serialize, Debug)]
@@ -2094,7 +2101,19 @@ impl Multimint {
 
                                     println!("tx confirmed");
                                 }
-                                DepositStateV2::Claimed { .. } => {
+                                DepositStateV2::Claimed {
+                                    btc_deposited,
+                                    btc_out_point,
+                                } => {
+                                    let deposit_event = DepositEvent {
+                                        event_kind: DepositEventKind::Claimed(ClaimedEvent {
+                                            amount: Amount::from_sats(btc_deposited.to_sat()).msats,
+                                            txid: btc_out_point.txid.to_string(),
+                                        }),
+                                    };
+                                    sink.add(deposit_event)
+                                        .expect("couldn't add deposit event to stream");
+
                                     println!("tx claimed");
                                 }
                                 DepositStateV2::Failed(e) => {

@@ -315,6 +315,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   AwaitingConfsEvent dco_decode_box_autoadd_awaiting_confs_event(dynamic raw);
 
   @protected
+  ClaimedEvent dco_decode_box_autoadd_claimed_event(dynamic raw);
+
+  @protected
   ConfirmedEvent dco_decode_box_autoadd_confirmed_event(dynamic raw);
 
   @protected
@@ -322,6 +325,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   BigInt dco_decode_box_autoadd_u_64(dynamic raw);
+
+  @protected
+  ClaimedEvent dco_decode_claimed_event(dynamic raw);
 
   @protected
   ConfirmedEvent dco_decode_confirmed_event(dynamic raw);
@@ -671,6 +677,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  ClaimedEvent sse_decode_box_autoadd_claimed_event(
+    SseDeserializer deserializer,
+  );
+
+  @protected
   ConfirmedEvent sse_decode_box_autoadd_confirmed_event(
     SseDeserializer deserializer,
   );
@@ -682,6 +693,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   BigInt sse_decode_box_autoadd_u_64(SseDeserializer deserializer);
+
+  @protected
+  ClaimedEvent sse_decode_claimed_event(SseDeserializer deserializer);
 
   @protected
   ConfirmedEvent sse_decode_confirmed_event(SseDeserializer deserializer);
@@ -1077,6 +1091,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_box_autoadd_claimed_event(
+    ClaimedEvent self,
+    SseSerializer serializer,
+  );
+
+  @protected
   void sse_encode_box_autoadd_confirmed_event(
     ConfirmedEvent self,
     SseSerializer serializer,
@@ -1090,6 +1110,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_box_autoadd_u_64(BigInt self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_claimed_event(ClaimedEvent self, SseSerializer serializer);
 
   @protected
   void sse_encode_confirmed_event(

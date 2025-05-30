@@ -51,16 +51,17 @@ class _DashboardState extends State<Dashboard> {
           federationId: widget.fed.federationId,
         ).asBroadcastStream();
     depositEvents.listen((event) {
-      if (event.eventKind is DepositEventKind_Confirmed) {
-        final confirmedEvt =
-            (event.eventKind as DepositEventKind_Confirmed).field0;
-        print('pattern match confirmed: ${confirmedEvt.txid}');
-        Timer(const Duration(seconds: 5), () {
-          // balance update requires waiting for the claim to finish
-          // this is hacky, perhaps there's a better approach?
-          _loadBalance();
-          _loadTransactions();
-        });
+      if (event.eventKind is DepositEventKind_Claimed) {
+        final claimedEvt = (event.eventKind as DepositEventKind_Claimed).field0;
+        print('pattern match claimed: ${claimedEvt.txid}');
+        // Timer(const Duration(seconds: 5), () {
+        //   // balance update requires waiting for the claim to finish
+        //   // this is hacky, perhaps there's a better approach?
+        //   _loadBalance();
+        //   _loadTransactions();
+        // });
+        _loadBalance();
+        _loadTransactions();
       }
     });
   }
@@ -384,6 +385,10 @@ class _DashboardState extends State<Dashboard> {
                         case DepositEventKind_Confirmed(
                           field0: final confirmedEvt,
                         ):
+                          msg = 'Tx confirmed, claiming ecash';
+                          amount = confirmedEvt.amount;
+                          break;
+                        case DepositEventKind_Claimed(field0: final claimedEvt):
                           return const SizedBox();
                       }
 

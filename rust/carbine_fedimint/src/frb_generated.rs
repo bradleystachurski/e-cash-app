@@ -4142,6 +4142,18 @@ impl SseDecode for bool {
     }
 }
 
+impl SseDecode for crate::ClaimedEvent {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_amount = <u64>::sse_decode(deserializer);
+        let mut var_txid = <String>::sse_decode(deserializer);
+        return crate::ClaimedEvent {
+            amount: var_amount,
+            txid: var_txid,
+        };
+    }
+}
+
 impl SseDecode for crate::ConfirmedEvent {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -4180,6 +4192,10 @@ impl SseDecode for crate::DepositEventKind {
             2 => {
                 let mut var_field0 = <crate::ConfirmedEvent>::sse_decode(deserializer);
                 return crate::DepositEventKind::Confirmed(var_field0);
+            }
+            3 => {
+                let mut var_field0 = <crate::ClaimedEvent>::sse_decode(deserializer);
+                return crate::DepositEventKind::Claimed(var_field0);
             }
             _ => {
                 unimplemented!("");
@@ -4939,6 +4955,22 @@ impl flutter_rust_bridge::IntoIntoDart<crate::AwaitingConfsEvent> for crate::Awa
     }
 }
 // Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::ClaimedEvent {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.amount.into_into_dart().into_dart(),
+            self.txid.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive for crate::ClaimedEvent {}
+impl flutter_rust_bridge::IntoIntoDart<crate::ClaimedEvent> for crate::ClaimedEvent {
+    fn into_into_dart(self) -> crate::ClaimedEvent {
+        self
+    }
+}
+// Codec=Dco (DartCObject based), see doc to use other codecs
 impl flutter_rust_bridge::IntoDart for crate::ConfirmedEvent {
     fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
         [
@@ -4978,6 +5010,9 @@ impl flutter_rust_bridge::IntoDart for crate::DepositEventKind {
             }
             crate::DepositEventKind::Confirmed(field0) => {
                 [2.into_dart(), field0.into_into_dart().into_dart()].into_dart()
+            }
+            crate::DepositEventKind::Claimed(field0) => {
+                [3.into_dart(), field0.into_into_dart().into_dart()].into_dart()
             }
             _ => {
                 unimplemented!("");
@@ -5393,6 +5428,14 @@ impl SseEncode for bool {
     }
 }
 
+impl SseEncode for crate::ClaimedEvent {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <u64>::sse_encode(self.amount, serializer);
+        <String>::sse_encode(self.txid, serializer);
+    }
+}
+
 impl SseEncode for crate::ConfirmedEvent {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -5423,6 +5466,10 @@ impl SseEncode for crate::DepositEventKind {
             crate::DepositEventKind::Confirmed(field0) => {
                 <i32>::sse_encode(2, serializer);
                 <crate::ConfirmedEvent>::sse_encode(field0, serializer);
+            }
+            crate::DepositEventKind::Claimed(field0) => {
+                <i32>::sse_encode(3, serializer);
+                <crate::ClaimedEvent>::sse_encode(field0, serializer);
             }
             _ => {
                 unimplemented!("");

@@ -3449,6 +3449,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  ClaimedEvent dco_decode_box_autoadd_claimed_event(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return dco_decode_claimed_event(raw);
+  }
+
+  @protected
   ConfirmedEvent dco_decode_box_autoadd_confirmed_event(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_confirmed_event(raw);
@@ -3464,6 +3470,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   BigInt dco_decode_box_autoadd_u_64(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_u_64(raw);
+  }
+
+  @protected
+  ClaimedEvent dco_decode_claimed_event(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return ClaimedEvent(
+      amount: dco_decode_u_64(arr[0]),
+      txid: dco_decode_String(arr[1]),
+    );
   }
 
   @protected
@@ -3502,6 +3520,10 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       case 2:
         return DepositEventKind_Confirmed(
           dco_decode_box_autoadd_confirmed_event(raw[1]),
+        );
+      case 3:
+        return DepositEventKind_Claimed(
+          dco_decode_box_autoadd_claimed_event(raw[1]),
         );
       default:
         throw Exception("unreachable");
@@ -4273,6 +4295,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  ClaimedEvent sse_decode_box_autoadd_claimed_event(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_claimed_event(deserializer));
+  }
+
+  @protected
   ConfirmedEvent sse_decode_box_autoadd_confirmed_event(
     SseDeserializer deserializer,
   ) {
@@ -4292,6 +4322,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   BigInt sse_decode_box_autoadd_u_64(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return (sse_decode_u_64(deserializer));
+  }
+
+  @protected
+  ClaimedEvent sse_decode_claimed_event(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_amount = sse_decode_u_64(deserializer);
+    var var_txid = sse_decode_String(deserializer);
+    return ClaimedEvent(amount: var_amount, txid: var_txid);
   }
 
   @protected
@@ -4326,6 +4364,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       case 2:
         var var_field0 = sse_decode_box_autoadd_confirmed_event(deserializer);
         return DepositEventKind_Confirmed(var_field0);
+      case 3:
+        var var_field0 = sse_decode_box_autoadd_claimed_event(deserializer);
+        return DepositEventKind_Claimed(var_field0);
       default:
         throw UnimplementedError('');
     }
@@ -5167,6 +5208,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_box_autoadd_claimed_event(
+    ClaimedEvent self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_claimed_event(self, serializer);
+  }
+
+  @protected
   void sse_encode_box_autoadd_confirmed_event(
     ConfirmedEvent self,
     SseSerializer serializer,
@@ -5188,6 +5238,13 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_box_autoadd_u_64(BigInt self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_u_64(self, serializer);
+  }
+
+  @protected
+  void sse_encode_claimed_event(ClaimedEvent self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_u_64(self.amount, serializer);
+    sse_encode_String(self.txid, serializer);
   }
 
   @protected
@@ -5222,6 +5279,9 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       case DepositEventKind_Confirmed(field0: final field0):
         sse_encode_i_32(2, serializer);
         sse_encode_box_autoadd_confirmed_event(field0, serializer);
+      case DepositEventKind_Claimed(field0: final field0):
+        sse_encode_i_32(3, serializer);
+        sse_encode_box_autoadd_claimed_event(field0, serializer);
     }
   }
 

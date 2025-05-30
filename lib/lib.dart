@@ -9,7 +9,7 @@ import 'package:freezed_annotation/freezed_annotation.dart' hide protected;
 part 'lib.freezed.dart';
 
 // These functions are ignored because they are not marked as `pub`: `add_relay`, `await_ecash_reissue`, `await_ecash_send`, `await_receive_lnv1`, `await_receive_lnv2`, `await_send_lnv1`, `await_send_lnv2`, `build_client`, `check_all_tweak_indexes`, `create_nostr_client`, `derive_federation_secret`, `get_client_database`, `get_federation_meta`, `get_multimint`, `has_federation`, `lnv1_select_gateway`, `lnv1_update_gateway_cache`, `lnv2_select_gateway`, `load_clients`, `most_recent_unused_pegin_address`, `parse_content`, `parse_ecash`, `parse_federation_id`, `parse_federation_name`, `parse_invite_codes`, `parse_modules`, `parse_network`, `parse_picture`, `pay_lnv1`, `pay_lnv2`, `receive_lnv1`, `receive_lnv2`, `reissue_ecash`, `select_receive_gateway`, `select_send_gateway`, `send_ecash`, `transactions`
-// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `try_from`
+// These function are ignored because they are on traits that is not defined in current crate (put an empty `#[frb]` on it to unignore): `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `assert_receiver_is_total_eq`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `clone`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `eq`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `fmt`, `try_from`
 
 Future<void> initMultimint({required String path}) =>
     RustLib.instance.api.crateInitMultimint(path: path);
@@ -315,6 +315,24 @@ class AwaitingConfsEvent {
           needed == other.needed;
 }
 
+class ClaimedEvent {
+  final BigInt amount;
+  final String txid;
+
+  const ClaimedEvent({required this.amount, required this.txid});
+
+  @override
+  int get hashCode => amount.hashCode ^ txid.hashCode;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is ClaimedEvent &&
+          runtimeType == other.runtimeType &&
+          amount == other.amount &&
+          txid == other.txid;
+}
+
 class ConfirmedEvent {
   final BigInt amount;
   final String txid;
@@ -359,6 +377,8 @@ sealed class DepositEventKind with _$DepositEventKind {
       DepositEventKind_AwaitingConfs;
   const factory DepositEventKind.confirmed(ConfirmedEvent field0) =
       DepositEventKind_Confirmed;
+  const factory DepositEventKind.claimed(ClaimedEvent field0) =
+      DepositEventKind_Claimed;
 }
 
 class FederationMeta {

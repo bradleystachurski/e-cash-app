@@ -23,18 +23,21 @@ mixin _$DepositEventKind {
     required TResult Function(MempoolEvent field0) mempool,
     required TResult Function(AwaitingConfsEvent field0) awaitingConfs,
     required TResult Function(ConfirmedEvent field0) confirmed,
+    required TResult Function(ClaimedEvent field0) claimed,
   }) => throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? whenOrNull<TResult extends Object?>({
     TResult? Function(MempoolEvent field0)? mempool,
     TResult? Function(AwaitingConfsEvent field0)? awaitingConfs,
     TResult? Function(ConfirmedEvent field0)? confirmed,
+    TResult? Function(ClaimedEvent field0)? claimed,
   }) => throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeWhen<TResult extends Object?>({
     TResult Function(MempoolEvent field0)? mempool,
     TResult Function(AwaitingConfsEvent field0)? awaitingConfs,
     TResult Function(ConfirmedEvent field0)? confirmed,
+    TResult Function(ClaimedEvent field0)? claimed,
     required TResult orElse(),
   }) => throw _privateConstructorUsedError;
   @optionalTypeArgs
@@ -43,18 +46,21 @@ mixin _$DepositEventKind {
     required TResult Function(DepositEventKind_AwaitingConfs value)
     awaitingConfs,
     required TResult Function(DepositEventKind_Confirmed value) confirmed,
+    required TResult Function(DepositEventKind_Claimed value) claimed,
   }) => throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult? mapOrNull<TResult extends Object?>({
     TResult? Function(DepositEventKind_Mempool value)? mempool,
     TResult? Function(DepositEventKind_AwaitingConfs value)? awaitingConfs,
     TResult? Function(DepositEventKind_Confirmed value)? confirmed,
+    TResult? Function(DepositEventKind_Claimed value)? claimed,
   }) => throw _privateConstructorUsedError;
   @optionalTypeArgs
   TResult maybeMap<TResult extends Object?>({
     TResult Function(DepositEventKind_Mempool value)? mempool,
     TResult Function(DepositEventKind_AwaitingConfs value)? awaitingConfs,
     TResult Function(DepositEventKind_Confirmed value)? confirmed,
+    TResult Function(DepositEventKind_Claimed value)? claimed,
     required TResult orElse(),
   }) => throw _privateConstructorUsedError;
 }
@@ -156,6 +162,7 @@ class _$DepositEventKind_MempoolImpl extends DepositEventKind_Mempool {
     required TResult Function(MempoolEvent field0) mempool,
     required TResult Function(AwaitingConfsEvent field0) awaitingConfs,
     required TResult Function(ConfirmedEvent field0) confirmed,
+    required TResult Function(ClaimedEvent field0) claimed,
   }) {
     return mempool(field0);
   }
@@ -166,6 +173,7 @@ class _$DepositEventKind_MempoolImpl extends DepositEventKind_Mempool {
     TResult? Function(MempoolEvent field0)? mempool,
     TResult? Function(AwaitingConfsEvent field0)? awaitingConfs,
     TResult? Function(ConfirmedEvent field0)? confirmed,
+    TResult? Function(ClaimedEvent field0)? claimed,
   }) {
     return mempool?.call(field0);
   }
@@ -176,6 +184,7 @@ class _$DepositEventKind_MempoolImpl extends DepositEventKind_Mempool {
     TResult Function(MempoolEvent field0)? mempool,
     TResult Function(AwaitingConfsEvent field0)? awaitingConfs,
     TResult Function(ConfirmedEvent field0)? confirmed,
+    TResult Function(ClaimedEvent field0)? claimed,
     required TResult orElse(),
   }) {
     if (mempool != null) {
@@ -191,6 +200,7 @@ class _$DepositEventKind_MempoolImpl extends DepositEventKind_Mempool {
     required TResult Function(DepositEventKind_AwaitingConfs value)
     awaitingConfs,
     required TResult Function(DepositEventKind_Confirmed value) confirmed,
+    required TResult Function(DepositEventKind_Claimed value) claimed,
   }) {
     return mempool(this);
   }
@@ -201,6 +211,7 @@ class _$DepositEventKind_MempoolImpl extends DepositEventKind_Mempool {
     TResult? Function(DepositEventKind_Mempool value)? mempool,
     TResult? Function(DepositEventKind_AwaitingConfs value)? awaitingConfs,
     TResult? Function(DepositEventKind_Confirmed value)? confirmed,
+    TResult? Function(DepositEventKind_Claimed value)? claimed,
   }) {
     return mempool?.call(this);
   }
@@ -211,6 +222,7 @@ class _$DepositEventKind_MempoolImpl extends DepositEventKind_Mempool {
     TResult Function(DepositEventKind_Mempool value)? mempool,
     TResult Function(DepositEventKind_AwaitingConfs value)? awaitingConfs,
     TResult Function(DepositEventKind_Confirmed value)? confirmed,
+    TResult Function(DepositEventKind_Claimed value)? claimed,
     required TResult orElse(),
   }) {
     if (mempool != null) {
@@ -317,6 +329,7 @@ class _$DepositEventKind_AwaitingConfsImpl
     required TResult Function(MempoolEvent field0) mempool,
     required TResult Function(AwaitingConfsEvent field0) awaitingConfs,
     required TResult Function(ConfirmedEvent field0) confirmed,
+    required TResult Function(ClaimedEvent field0) claimed,
   }) {
     return awaitingConfs(field0);
   }
@@ -327,6 +340,7 @@ class _$DepositEventKind_AwaitingConfsImpl
     TResult? Function(MempoolEvent field0)? mempool,
     TResult? Function(AwaitingConfsEvent field0)? awaitingConfs,
     TResult? Function(ConfirmedEvent field0)? confirmed,
+    TResult? Function(ClaimedEvent field0)? claimed,
   }) {
     return awaitingConfs?.call(field0);
   }
@@ -337,6 +351,7 @@ class _$DepositEventKind_AwaitingConfsImpl
     TResult Function(MempoolEvent field0)? mempool,
     TResult Function(AwaitingConfsEvent field0)? awaitingConfs,
     TResult Function(ConfirmedEvent field0)? confirmed,
+    TResult Function(ClaimedEvent field0)? claimed,
     required TResult orElse(),
   }) {
     if (awaitingConfs != null) {
@@ -352,6 +367,7 @@ class _$DepositEventKind_AwaitingConfsImpl
     required TResult Function(DepositEventKind_AwaitingConfs value)
     awaitingConfs,
     required TResult Function(DepositEventKind_Confirmed value) confirmed,
+    required TResult Function(DepositEventKind_Claimed value) claimed,
   }) {
     return awaitingConfs(this);
   }
@@ -362,6 +378,7 @@ class _$DepositEventKind_AwaitingConfsImpl
     TResult? Function(DepositEventKind_Mempool value)? mempool,
     TResult? Function(DepositEventKind_AwaitingConfs value)? awaitingConfs,
     TResult? Function(DepositEventKind_Confirmed value)? confirmed,
+    TResult? Function(DepositEventKind_Claimed value)? claimed,
   }) {
     return awaitingConfs?.call(this);
   }
@@ -372,6 +389,7 @@ class _$DepositEventKind_AwaitingConfsImpl
     TResult Function(DepositEventKind_Mempool value)? mempool,
     TResult Function(DepositEventKind_AwaitingConfs value)? awaitingConfs,
     TResult Function(DepositEventKind_Confirmed value)? confirmed,
+    TResult Function(DepositEventKind_Claimed value)? claimed,
     required TResult orElse(),
   }) {
     if (awaitingConfs != null) {
@@ -475,6 +493,7 @@ class _$DepositEventKind_ConfirmedImpl extends DepositEventKind_Confirmed {
     required TResult Function(MempoolEvent field0) mempool,
     required TResult Function(AwaitingConfsEvent field0) awaitingConfs,
     required TResult Function(ConfirmedEvent field0) confirmed,
+    required TResult Function(ClaimedEvent field0) claimed,
   }) {
     return confirmed(field0);
   }
@@ -485,6 +504,7 @@ class _$DepositEventKind_ConfirmedImpl extends DepositEventKind_Confirmed {
     TResult? Function(MempoolEvent field0)? mempool,
     TResult? Function(AwaitingConfsEvent field0)? awaitingConfs,
     TResult? Function(ConfirmedEvent field0)? confirmed,
+    TResult? Function(ClaimedEvent field0)? claimed,
   }) {
     return confirmed?.call(field0);
   }
@@ -495,6 +515,7 @@ class _$DepositEventKind_ConfirmedImpl extends DepositEventKind_Confirmed {
     TResult Function(MempoolEvent field0)? mempool,
     TResult Function(AwaitingConfsEvent field0)? awaitingConfs,
     TResult Function(ConfirmedEvent field0)? confirmed,
+    TResult Function(ClaimedEvent field0)? claimed,
     required TResult orElse(),
   }) {
     if (confirmed != null) {
@@ -510,6 +531,7 @@ class _$DepositEventKind_ConfirmedImpl extends DepositEventKind_Confirmed {
     required TResult Function(DepositEventKind_AwaitingConfs value)
     awaitingConfs,
     required TResult Function(DepositEventKind_Confirmed value) confirmed,
+    required TResult Function(DepositEventKind_Claimed value) claimed,
   }) {
     return confirmed(this);
   }
@@ -520,6 +542,7 @@ class _$DepositEventKind_ConfirmedImpl extends DepositEventKind_Confirmed {
     TResult? Function(DepositEventKind_Mempool value)? mempool,
     TResult? Function(DepositEventKind_AwaitingConfs value)? awaitingConfs,
     TResult? Function(DepositEventKind_Confirmed value)? confirmed,
+    TResult? Function(DepositEventKind_Claimed value)? claimed,
   }) {
     return confirmed?.call(this);
   }
@@ -530,6 +553,7 @@ class _$DepositEventKind_ConfirmedImpl extends DepositEventKind_Confirmed {
     TResult Function(DepositEventKind_Mempool value)? mempool,
     TResult Function(DepositEventKind_AwaitingConfs value)? awaitingConfs,
     TResult Function(DepositEventKind_Confirmed value)? confirmed,
+    TResult Function(DepositEventKind_Claimed value)? claimed,
     required TResult orElse(),
   }) {
     if (confirmed != null) {
@@ -551,5 +575,165 @@ abstract class DepositEventKind_Confirmed extends DepositEventKind {
   /// with the given fields replaced by the non-null parameter values.
   @JsonKey(includeFromJson: false, includeToJson: false)
   _$$DepositEventKind_ConfirmedImplCopyWith<_$DepositEventKind_ConfirmedImpl>
+  get copyWith => throw _privateConstructorUsedError;
+}
+
+/// @nodoc
+abstract class _$$DepositEventKind_ClaimedImplCopyWith<$Res> {
+  factory _$$DepositEventKind_ClaimedImplCopyWith(
+    _$DepositEventKind_ClaimedImpl value,
+    $Res Function(_$DepositEventKind_ClaimedImpl) then,
+  ) = __$$DepositEventKind_ClaimedImplCopyWithImpl<$Res>;
+  @useResult
+  $Res call({ClaimedEvent field0});
+}
+
+/// @nodoc
+class __$$DepositEventKind_ClaimedImplCopyWithImpl<$Res>
+    extends _$DepositEventKindCopyWithImpl<$Res, _$DepositEventKind_ClaimedImpl>
+    implements _$$DepositEventKind_ClaimedImplCopyWith<$Res> {
+  __$$DepositEventKind_ClaimedImplCopyWithImpl(
+    _$DepositEventKind_ClaimedImpl _value,
+    $Res Function(_$DepositEventKind_ClaimedImpl) _then,
+  ) : super(_value, _then);
+
+  /// Create a copy of DepositEventKind
+  /// with the given fields replaced by the non-null parameter values.
+  @pragma('vm:prefer-inline')
+  @override
+  $Res call({Object? field0 = null}) {
+    return _then(
+      _$DepositEventKind_ClaimedImpl(
+        null == field0
+            ? _value.field0
+            : field0 // ignore: cast_nullable_to_non_nullable
+                as ClaimedEvent,
+      ),
+    );
+  }
+}
+
+/// @nodoc
+
+class _$DepositEventKind_ClaimedImpl extends DepositEventKind_Claimed {
+  const _$DepositEventKind_ClaimedImpl(this.field0) : super._();
+
+  @override
+  final ClaimedEvent field0;
+
+  @override
+  String toString() {
+    return 'DepositEventKind.claimed(field0: $field0)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        (other.runtimeType == runtimeType &&
+            other is _$DepositEventKind_ClaimedImpl &&
+            (identical(other.field0, field0) || other.field0 == field0));
+  }
+
+  @override
+  int get hashCode => Object.hash(runtimeType, field0);
+
+  /// Create a copy of DepositEventKind
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  @override
+  @pragma('vm:prefer-inline')
+  _$$DepositEventKind_ClaimedImplCopyWith<_$DepositEventKind_ClaimedImpl>
+  get copyWith => __$$DepositEventKind_ClaimedImplCopyWithImpl<
+    _$DepositEventKind_ClaimedImpl
+  >(this, _$identity);
+
+  @override
+  @optionalTypeArgs
+  TResult when<TResult extends Object?>({
+    required TResult Function(MempoolEvent field0) mempool,
+    required TResult Function(AwaitingConfsEvent field0) awaitingConfs,
+    required TResult Function(ConfirmedEvent field0) confirmed,
+    required TResult Function(ClaimedEvent field0) claimed,
+  }) {
+    return claimed(field0);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? whenOrNull<TResult extends Object?>({
+    TResult? Function(MempoolEvent field0)? mempool,
+    TResult? Function(AwaitingConfsEvent field0)? awaitingConfs,
+    TResult? Function(ConfirmedEvent field0)? confirmed,
+    TResult? Function(ClaimedEvent field0)? claimed,
+  }) {
+    return claimed?.call(field0);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeWhen<TResult extends Object?>({
+    TResult Function(MempoolEvent field0)? mempool,
+    TResult Function(AwaitingConfsEvent field0)? awaitingConfs,
+    TResult Function(ConfirmedEvent field0)? confirmed,
+    TResult Function(ClaimedEvent field0)? claimed,
+    required TResult orElse(),
+  }) {
+    if (claimed != null) {
+      return claimed(field0);
+    }
+    return orElse();
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult map<TResult extends Object?>({
+    required TResult Function(DepositEventKind_Mempool value) mempool,
+    required TResult Function(DepositEventKind_AwaitingConfs value)
+    awaitingConfs,
+    required TResult Function(DepositEventKind_Confirmed value) confirmed,
+    required TResult Function(DepositEventKind_Claimed value) claimed,
+  }) {
+    return claimed(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult? mapOrNull<TResult extends Object?>({
+    TResult? Function(DepositEventKind_Mempool value)? mempool,
+    TResult? Function(DepositEventKind_AwaitingConfs value)? awaitingConfs,
+    TResult? Function(DepositEventKind_Confirmed value)? confirmed,
+    TResult? Function(DepositEventKind_Claimed value)? claimed,
+  }) {
+    return claimed?.call(this);
+  }
+
+  @override
+  @optionalTypeArgs
+  TResult maybeMap<TResult extends Object?>({
+    TResult Function(DepositEventKind_Mempool value)? mempool,
+    TResult Function(DepositEventKind_AwaitingConfs value)? awaitingConfs,
+    TResult Function(DepositEventKind_Confirmed value)? confirmed,
+    TResult Function(DepositEventKind_Claimed value)? claimed,
+    required TResult orElse(),
+  }) {
+    if (claimed != null) {
+      return claimed(this);
+    }
+    return orElse();
+  }
+}
+
+abstract class DepositEventKind_Claimed extends DepositEventKind {
+  const factory DepositEventKind_Claimed(final ClaimedEvent field0) =
+      _$DepositEventKind_ClaimedImpl;
+  const DepositEventKind_Claimed._() : super._();
+
+  @override
+  ClaimedEvent get field0;
+
+  /// Create a copy of DepositEventKind
+  /// with the given fields replaced by the non-null parameter values.
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  _$$DepositEventKind_ClaimedImplCopyWith<_$DepositEventKind_ClaimedImpl>
   get copyWith => throw _privateConstructorUsedError;
 }
