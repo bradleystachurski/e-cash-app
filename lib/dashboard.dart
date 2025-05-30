@@ -47,7 +47,7 @@ class _DashboardState extends State<Dashboard> {
     _loadBalance();
     _loadTransactions();
     depositEvents =
-        debugWalletStream(
+        subscribeDeposits(
           federationId: widget.fed.federationId,
         ).asBroadcastStream();
     depositEvents.listen((event) {
@@ -61,7 +61,11 @@ class _DashboardState extends State<Dashboard> {
         //   _loadTransactions();
         // });
         _loadBalance();
-        _loadTransactions();
+        Timer(const Duration(milliseconds: 100), () {
+          // transactions update requires waiting for the claim to finish
+          // this is hacky, perhaps there's a better approach?
+          _loadTransactions();
+        });
       }
     });
   }
@@ -399,33 +403,40 @@ class _DashboardState extends State<Dashboard> {
                       print('amount to format: $amount');
                       final formattedAmount = formatBalance(amount, false);
 
-                      return Card(
-                        elevation: 4,
-                        margin: const EdgeInsets.symmetric(vertical: 6),
-                        color: Theme.of(context).colorScheme.surface,
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: Colors.greenAccent.withOpacity(
-                              0.1,
+                      if (_selectedPaymentType == PaymentType.onchain) {
+                        return Card(
+                          elevation: 4,
+                          margin: const EdgeInsets.symmetric(vertical: 6),
+                          color: Theme.of(context).colorScheme.surface,
+                          child: ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: Colors.greenAccent.withOpacity(
+                                0.1,
+                              ),
+                              child: Icon(
+                                Icons.link,
+                                color: Colors.yellowAccent,
+                              ),
                             ),
-                            child: Icon(Icons.link, color: Colors.yellowAccent),
+                            title: Text(
+                              "Received",
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                            subtitle: Text(
+                              msg,
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                            // subtitle: Text(
+                            // TODO: get date
+                            //   formattedDate,
+                            //   style: Theme.of(context).textTheme.bodyMedium,
+                            // ),
+                            trailing: Text(formattedAmount, style: amountStyle),
                           ),
-                          title: Text(
-                            "Received",
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                          subtitle: Text(
-                            msg,
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                          // subtitle: Text(
-                          // TODO: get date
-                          //   formattedDate,
-                          //   style: Theme.of(context).textTheme.bodyMedium,
-                          // ),
-                          trailing: Text(formattedAmount, style: amountStyle),
-                        ),
-                      );
+                        );
+                      } else {
+                        return const SizedBox();
+                      }
                     },
                   ),
                 ],

@@ -1,5 +1,6 @@
 generate:
   flutter_rust_bridge_codegen generate --rust-input=crate --rust-root=$ROOT/rust/carbine_fedimint --dart-output=$ROOT/lib/
+  flutter pub run build_runner build --delete-conflicting-outputs
 
 build-android-x86_64:
   $ROOT/scripts/build-android.sh

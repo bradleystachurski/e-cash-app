@@ -21,7 +21,7 @@ use fedimint_wallet_client::{
 /* AUTO INJECTED BY flutter_rust_bridge. This line may not be accurate, and you can change it according to your needs. */
 use flutter_rust_bridge::frb;
 use serde_json::to_value;
-use tokio::sync::{OnceCell, RwLock};
+use tokio::sync::{broadcast, OnceCell, RwLock};
 
 use std::path::PathBuf;
 use std::time::UNIX_EPOCH;
@@ -68,6 +68,9 @@ use serde::Serialize;
 use crate::db::{FederationConfig, FederationConfigKey, FederationConfigKeyPrefix};
 use crate::frb_generated::StreamSink;
 
+use fedimint_wallet_client::WalletClientModule;
+use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
+
 pub const DEFAULT_RELAYS: &[&str] = &[
     "wss://relay.nostr.band",
     "wss://nostr-pub.wellorder.net",
@@ -85,6 +88,324 @@ static MULTIMINT: OnceCell<Arc<RwLock<Multimint>>> = OnceCell::const_new();
 
 async fn get_multimint() -> Arc<RwLock<Multimint>> {
     MULTIMINT.get().expect("Multimint not initialized").clone()
+}
+
+// #[derive(Debug)]
+// struct Channels {
+//     sub_tx: UnboundedSender<TweakIdx>,
+//     events_tx: UnboundedSender<DepositEvent>,
+// }
+// static STORE: OnceCell<Channels> = OnceCell::const_new();
+
+async fn monitor_all_unused_pegin_addresses(
+    federation_id: &FederationId,
+    sub_tx: UnboundedSender<(FederationId, TweakIdx)>,
+) -> anyhow::Result<()> {
+    let multimint = get_multimint().await;
+    let mm = multimint.read().await;
+    let client = mm
+        .clients
+        .get(&federation_id)
+        .expect("No federation exists");
+    let wallet_module = client.get_first_module::<WalletClientModule>()?;
+
+    let mut tweak_idx = TweakIdx(0);
+    while let Ok(data) = wallet_module.get_pegin_tweak_idx(tweak_idx).await {
+        if data.claimed.is_empty() {
+            // we found an allocated, unused address so we need to monitor
+            sub_tx.send((*federation_id, tweak_idx))?;
+        }
+        tweak_idx = tweak_idx.next();
+    }
+
+    Ok(())
+}
+
+// /// Starts the combined deposit event stream.  Dart calls this once.
+// #[frb]
+// pub async fn start_wallet_stream(
+//     sink: StreamSink<DepositEvent>,
+//     federation_id: fedimint_core::config::FederationId,
+// ) -> anyhow::Result<()> {
+//     if STORE.get().is_some() {
+//         println!("stream already initialized");
+//         return Ok(());
+//     }
+
+//     // Create mpsc channels for tweak-index subscriptions and DepositEvent fan-in
+//     let (sub_tx, mut sub_rx) = unbounded_channel::<TweakIdx>();
+//     let (events_tx, mut events_rx) = unbounded_channel::<DepositEvent>();
+
+//     // Store senders for the subscription RPC
+//     STORE
+//         .set(Channels {
+//             sub_tx: sub_tx.clone(),
+//             events_tx: events_tx.clone(),
+//         })
+//         .expect("STORE must only be initialized once");
+
+//     // Task: dispatch incoming events into Dart's StreamSink
+//     tokio::spawn(async move {
+//         while let Some(evt) = events_rx.recv().await {
+//             // If Dart side closed, this will error out
+//             let _ = sink.add(evt);
+//         }
+//     });
+
+//     // Task: listen for new tweak indices and spawn watchers
+//     tokio::spawn(async move {
+//         while let Some(tweak_idx) = sub_rx.recv().await {
+//             let events_tx_clone = events_tx.clone();
+//             tokio::spawn(async move {
+//                 if let Err(e) = watch_one_tweak(federation_id, tweak_idx, events_tx_clone).await {
+//                     println!("watch_one_tweak failed: {:?}", e);
+//                 }
+//             });
+//         }
+//     });
+
+//     monitor_all_unused_pegin_addresses(&federation_id, sub_tx).await?;
+
+//     Ok(())
+// }
+
+#[frb]
+pub async fn subscribe_deposits(
+    sink: StreamSink<DepositEvent>,
+    federation_id: FederationId,
+) -> anyhow::Result<()> {
+    let multimint = get_multimint().await;
+    let mm = multimint.read().await;
+    let mut rx = mm.event_bus.subscribe();
+
+    while let Ok(evt) = rx.recv().await {
+        if evt.federation_id == federation_id {
+            if sink.add(evt).is_err() {
+                break;
+            }
+        }
+    }
+
+    Ok(())
+}
+
+#[frb]
+pub async fn monitor_deposit_address(
+    federation_id: FederationId,
+    address: String,
+) -> anyhow::Result<()> {
+    let address = bitcoin::Address::from_str(&address)?;
+
+    let multimint = get_multimint().await;
+    let mm = multimint.read().await;
+    let client = mm
+        .clients
+        .get(&federation_id)
+        .expect("No federation exists");
+    let wallet_module = client.get_first_module::<WalletClientModule>()?;
+
+    let tweak_idx = wallet_module.find_tweak_idx_by_address(address).await?;
+
+    mm.monitor_tx
+        .send((federation_id, tweak_idx))
+        .expect("failed to send new tweak index");
+
+    Ok(())
+}
+
+/// Watches a single tweak index, mapping DepositStateV2 updates into DepositEvent.
+async fn watch_one_tweak(
+    federation_id: fedimint_core::config::FederationId,
+    tweak_idx: TweakIdx,
+    events_tx: broadcast::Sender<DepositEvent>,
+) -> anyhow::Result<()> {
+    // TODO: move
+    use reqwest::Client;
+    use serde_json::Value;
+
+    let multimint = get_multimint().await;
+    let mm = multimint.read().await;
+    let client = mm
+        .clients
+        .get(&federation_id)
+        .expect("No federation exists");
+    let wallet_module = client.get_first_module::<WalletClientModule>()?;
+
+    // Initial existence check
+    let data = match wallet_module.get_pegin_tweak_idx(tweak_idx).await {
+        Ok(d) => d,
+        Err(e) if e.to_string().contains("TweakIdx not found") => return Ok(()),
+        Err(e) => return Err(e),
+    };
+
+    // Only subscribe to updates if not already claimed
+    if data.claimed.is_empty() {
+        let mut updates = wallet_module
+            .subscribe_deposit(data.operation_id)
+            .await?
+            .into_stream();
+
+        while let Some(state) = updates.next().await {
+            match state {
+                DepositStateV2::WaitingForTransaction => {
+                    println!("waiting for tx in mempool");
+                }
+                DepositStateV2::WaitingForConfirmation {
+                    btc_deposited,
+                    btc_out_point,
+                } => {
+                    println!("tx is about to be seen");
+                    println!("tx seen!");
+                    println!("btc_deposited: {:?}", btc_deposited);
+                    println!("btc_out_point: {:?}", btc_out_point);
+
+                    let deposit_event = DepositEvent {
+                        federation_id,
+                        event_kind: DepositEventKind::Mempool(MempoolEvent {
+                            // pretty messy, curious if we can improve units overall
+                            amount: Amount::from_sats(btc_deposited.to_sat()).msats,
+                            txid: btc_out_point.txid.to_string(),
+                        }),
+                    };
+
+                    fedimint_core::util::retry(
+                        "send deposit event",
+                        fedimint_core::util::backoff_util::background_backoff(),
+                        || async {
+                            events_tx
+                                .send(deposit_event.clone())
+                                .map_err(|_| anyhow::anyhow!("failed to emit deposit event"))
+                        },
+                    )
+                    .await
+                    .expect("Never gives up");
+
+                    // events_tx
+                    //     .send(deposit_event)
+                    //     .expect("couldn't emit deposit event");
+
+                    let client = Client::new();
+
+                    // let api_url = "https://mutinynet.com/api".to_string();
+                    let api_url = "http://localhost:22281".to_string();
+
+                    let tx_height = fedimint_core::util::retry(
+                        "get confirmed block height",
+                        fedimint_core::util::backoff_util::background_backoff(),
+                        || async {
+                            println!("inside retry for get confirmed block height");
+                            let resp = client
+                                .get(format!("{}/tx/{}", api_url, btc_out_point.txid.to_string(),))
+                                .send()
+                                .await?
+                                .error_for_status()?
+                                .text()
+                                .await?;
+
+                            println!("mutinynet resp");
+                            println!("{:?}", resp);
+
+                            // TODO: handle mempool event here instead of just retrying
+                            serde_json::from_str::<Value>(&resp)?
+                                .get("status")
+                                .and_then(|s| s.get("block_height"))
+                                .and_then(|h| h.as_u64())
+                                .ok_or_else(|| {
+                                    anyhow::anyhow!("no confirmation height yet, still in mempool")
+                                })
+                        },
+                    )
+                    .await
+                    .expect("Never gives up");
+
+                    println!("block height: {:?}", tx_height);
+
+                    let every_10_secs = fedimint_core::util::backoff_util::custom_backoff(
+                        Duration::from_secs(10),
+                        Duration::from_secs(10),
+                        None,
+                    );
+
+                    fedimint_core::util::retry("consensus confirmation", every_10_secs, || async {
+                        let consensus_height = wallet_module
+                            .api
+                            .fetch_consensus_block_count()
+                            .await?
+                            .saturating_sub(1);
+
+                        let needed = tx_height.saturating_sub(consensus_height);
+
+                        dbg!(consensus_height);
+                        dbg!(needed);
+
+                        let deposit_event = DepositEvent {
+                            federation_id,
+                            event_kind: DepositEventKind::AwaitingConfs(AwaitingConfsEvent {
+                                amount: Amount::from_sats(btc_deposited.to_sat()).msats,
+                                txid: btc_out_point.txid.to_string(),
+                                block_height: tx_height,
+                                needed,
+                            }),
+                        };
+                        events_tx
+                            .send(deposit_event)
+                            .expect("couldn't emit deposit event");
+
+                        anyhow::ensure!(needed == 0, "{} more confs needed", needed);
+
+                        println!("tx confirmed");
+                        Ok(())
+                    })
+                    .await
+                    .expect("Never gives up");
+
+                    // trigger another check of pegin monitor for faster claim
+                    wallet_module.recheck_pegin_address(tweak_idx).await?;
+                }
+                DepositStateV2::Confirmed {
+                    btc_deposited,
+                    btc_out_point,
+                } => {
+                    // TODO: should we emit a confirmed event?
+                    // probably, but a larger refactor overall is needed
+
+                    let deposit_event = DepositEvent {
+                        federation_id,
+                        event_kind: DepositEventKind::Confirmed(ConfirmedEvent {
+                            amount: Amount::from_sats(btc_deposited.to_sat()).msats,
+                            txid: btc_out_point.txid.to_string(),
+                        }),
+                    };
+                    events_tx
+                        .send(deposit_event)
+                        .expect("couldn't emit deposit event");
+                }
+                DepositStateV2::Claimed {
+                    btc_deposited,
+                    btc_out_point,
+                } => {
+                    let deposit_event = DepositEvent {
+                        federation_id,
+                        event_kind: DepositEventKind::Claimed(ClaimedEvent {
+                            amount: Amount::from_sats(btc_deposited.to_sat()).msats,
+                            txid: btc_out_point.txid.to_string(),
+                        }),
+                    };
+                    events_tx
+                        .send(deposit_event)
+                        .expect("couldn't emit deposit event");
+
+                    println!("tx claimed");
+                }
+                DepositStateV2::Failed(e) => {
+                    println!("deposit failed: {:?}", e);
+                    break;
+                }
+            };
+        }
+    }
+
+    Ok(())
 }
 
 #[frb]
@@ -381,7 +702,8 @@ pub enum DepositEventKind {
 
 #[derive(Clone, Eq, PartialEq, Serialize, Debug)]
 pub struct DepositEvent {
-    event_kind: DepositEventKind,
+    pub federation_id: FederationId,
+    pub event_kind: DepositEventKind,
 }
 
 #[frb]
@@ -572,6 +894,10 @@ pub struct Multimint {
     nostr_client: nostr_sdk::Client,
     public_federations: Vec<PublicFederation>,
     task_group: TaskGroup,
+    // TODO: rename
+    monitor_tx: UnboundedSender<(FederationId, TweakIdx)>,
+    // TODO: if this approach works, use more generic event type
+    event_bus: tokio::sync::broadcast::Sender<DepositEvent>,
 }
 
 // TODO: I dont like that this is separate from federation selector
@@ -621,6 +947,9 @@ impl Multimint {
         modules.attach(fedimint_lnv2_client::LightningClientInit::default());
         modules.attach(MetaClientInit);
 
+        let (monitor_tx, mut monitor_rx) = unbounded_channel::<(FederationId, TweakIdx)>();
+        let (event_bus_tx, _event_bus_rx) = broadcast::channel::<DepositEvent>(32);
+
         let mut multimint = Self {
             db,
             mnemonic,
@@ -629,8 +958,40 @@ impl Multimint {
             nostr_client: Multimint::create_nostr_client().await,
             public_federations: vec![],
             task_group: TaskGroup::new(),
+            monitor_tx: monitor_tx.clone(),
+            event_bus: event_bus_tx.clone(),
         };
         multimint.load_clients().await?;
+
+        // 3. spawn the “who-to-monitor” scanner
+        {
+            let federation_ids = multimint.clients.keys().cloned().collect::<Vec<_>>();
+            let monitor_tx = monitor_tx.clone();
+            tokio::spawn(async move {
+                for fed_id in federation_ids {
+                    if let Err(e) =
+                        monitor_all_unused_pegin_addresses(&fed_id, monitor_tx.clone()).await
+                    {
+                        eprintln!("monitor scan failed for {}: {:?}", fed_id, e);
+                    }
+                }
+            });
+        }
+
+        // 4. spawn the “spawn a watcher per tweak index” loop
+        {
+            let event_bus = event_bus_tx.clone();
+            tokio::spawn(async move {
+                while let Some((fed_id, tweak_idx)) = monitor_rx.recv().await {
+                    let event_bus = event_bus.clone();
+                    tokio::spawn(async move {
+                        if let Err(e) = watch_one_tweak(fed_id, tweak_idx, event_bus).await {
+                            eprintln!("watch_one_tweak({}) failed: {:?}", tweak_idx.0, e);
+                        }
+                    });
+                }
+            });
+        }
         Ok(multimint)
     }
 
@@ -1492,7 +1853,6 @@ impl Multimint {
                         }
                     }
                     "wallet" => {
-                        println!("found wallet tx history");
                         let meta = op_log_val.meta::<WalletOperationMeta>();
                         let outcome = op_log_val.outcome::<DepositStateV2>();
                         match meta.variant {
@@ -1501,11 +1861,6 @@ impl Multimint {
                                 tweak_idx,
                                 expires_at,
                             } => {
-                                println!("deposit");
-                                println!("address: {:?}", address);
-                                println!("tweak_idx: {:?}", tweak_idx);
-                                println!("expires_at: {:?}", expires_at);
-                                println!("outcome: {:?}", outcome);
                                 if let Some(DepositStateV2::Claimed {
                                     btc_deposited,
                                     btc_out_point,
@@ -1528,14 +1883,7 @@ impl Multimint {
                                 amount,
                                 fee,
                                 change,
-                            } => {
-                                println!("withdraw");
-                                println!("address: {:?}", address);
-                                println!("amount: {:?}", amount);
-                                println!("fee: {:?}", fee);
-                                println!("change: {:?}", change);
-                                None
-                            }
+                            } => None,
                             WalletOperationMetaVariant::RbfWithdraw { rbf: _, change: _ } => {
                                 println!("rbf withdraw");
                                 println!("real bad");
@@ -1670,7 +2018,7 @@ impl Multimint {
         // hardcoded address for the Mutinynet faucet
         // https://faucet.mutinynet.com/
         let address =
-            bitcoin::address::Address::from_str("tb1qd28npep0s8frcm3y7dxqajkcy2m40eysplyr9v")?;
+            bitcoin::address::Address::from_str("bcrt1qqq27qhdfs7hj9cvaylz3ssc33c4ph348csnj5u")?;
 
         let client = self
             .clients
@@ -1732,6 +2080,8 @@ impl Multimint {
             client.get_first_module::<fedimint_wallet_client::WalletClientModule>()?;
 
         let (_, address, _) = wallet_module.safe_allocate_deposit_address(()).await?;
+        // TODO: this isn't very elegant, but let's see if it works
+        monitor_deposit_address(*federation_id, address.to_string()).await?;
 
         Ok(address.to_string())
     }
@@ -1973,12 +2323,14 @@ impl Multimint {
                                     btc_deposited,
                                     btc_out_point,
                                 } => {
+                                    // mark
                                     println!("tx is about to be seen");
                                     println!("tx seen!");
                                     println!("btc_deposited: {:?}", btc_deposited);
                                     println!("btc_out_point: {:?}", btc_out_point);
 
                                     let deposit_event = DepositEvent {
+                                        federation_id: *federation_id,
                                         event_kind: DepositEventKind::Mempool(MempoolEvent {
                                             // pretty messy, curious if we can improve units overall
                                             amount: Amount::from_sats(btc_deposited.to_sat()).msats,
@@ -1986,8 +2338,20 @@ impl Multimint {
                                         }),
                                     };
 
-                                    sink.add(deposit_event)
-                                        .expect("couldn't add deposit event to stream");
+                                    fedimint_core::util::retry(
+                                        "send deposit event",
+                                        fedimint_core::util::backoff_util::background_backoff(),
+                                        || async {
+                                            sink.add(deposit_event.clone()).map_err(|_| {
+                                                anyhow::anyhow!("failed to emit deposit event")
+                                            })
+                                        },
+                                    )
+                                    .await
+                                    .expect("Never gives up");
+
+                                    // sink.add(deposit_event)
+                                    //     .expect("couldn't add deposit event to stream");
 
                                     let client = Client::new();
 
@@ -2052,6 +2416,7 @@ impl Multimint {
                                             dbg!(needed);
 
                                             let deposit_event = DepositEvent {
+                                                federation_id: *federation_id,
                                                 event_kind: DepositEventKind::AwaitingConfs(
                                                     AwaitingConfsEvent {
                                                         amount: Amount::from_sats(
@@ -2091,6 +2456,7 @@ impl Multimint {
                                     // probably, but a larger refactor overall is needed
 
                                     let deposit_event = DepositEvent {
+                                        federation_id: *federation_id,
                                         event_kind: DepositEventKind::Confirmed(ConfirmedEvent {
                                             amount: Amount::from_sats(btc_deposited.to_sat()).msats,
                                             txid: btc_out_point.txid.to_string(),
@@ -2106,6 +2472,7 @@ impl Multimint {
                                     btc_out_point,
                                 } => {
                                     let deposit_event = DepositEvent {
+                                        federation_id: *federation_id,
                                         event_kind: DepositEventKind::Claimed(ClaimedEvent {
                                             amount: Amount::from_sats(btc_deposited.to_sat()).msats,
                                             txid: btc_out_point.txid.to_string(),
