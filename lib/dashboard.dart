@@ -387,74 +387,68 @@ class _DashboardState extends State<Dashboard> {
                     ),
                   ),
                   if (_selectedPaymentType == PaymentType.onchain)
-                    SizedBox(
-                      height: 300,
-                      child: ListView.builder(
-                        itemCount: _depositMap.length,
-                        itemBuilder: (context, index) {
-                          final txids = _depositMap.keys.toList()..sort();
-                          final event = _depositMap[txids[index]]!;
-                          String msg;
-                          BigInt amount;
-                          switch (event.eventKind) {
-                            case DepositEventKind_Mempool(field0: final e):
-                              msg = 'Tx seen in mempool';
-                              amount = e.amount;
-                              break;
-                            case DepositEventKind_AwaitingConfs(
-                              field0: final e,
-                            ):
-                              msg =
-                                  'Tx included in block ${e.blockHeight}. Remaining confs: ${e.needed}';
-                              amount = e.amount;
-                              break;
-                            case DepositEventKind_Confirmed(field0: final e):
-                              msg = 'Tx confirmed, claiming ecash';
-                              amount = e.amount;
-                              break;
-                            case DepositEventKind_Claimed(field0: final e):
-                              // skip claimed entries
-                              return const SizedBox();
-                          }
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: NeverScrollableScrollPhysics(),
+                      itemCount: _depositMap.length,
+                      itemBuilder: (context, index) {
+                        final txids = _depositMap.keys.toList()..sort();
+                        final event = _depositMap[txids[index]]!;
+                        String msg;
+                        BigInt amount;
+                        switch (event.eventKind) {
+                          case DepositEventKind_Mempool(field0: final e):
+                            msg = 'Tx seen in mempool';
+                            amount = e.amount;
+                            break;
+                          case DepositEventKind_AwaitingConfs(field0: final e):
+                            msg =
+                                'Tx included in block ${e.blockHeight}. Remaining confs: ${e.needed}';
+                            amount = e.amount;
+                            break;
+                          case DepositEventKind_Confirmed(field0: final e):
+                            msg = 'Tx confirmed, claiming ecash';
+                            amount = e.amount;
+                            break;
+                          case DepositEventKind_Claimed(field0: final e):
+                            // skip claimed entries
+                            return const SizedBox();
+                        }
 
-                          final amountStyle = TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.greenAccent,
-                          );
+                        final amountStyle = TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.greenAccent,
+                        );
 
-                          final formattedAmount = formatBalance(amount, false);
+                        final formattedAmount = formatBalance(amount, false);
 
-                          return Card(
-                            elevation: 4,
-                            margin: const EdgeInsets.symmetric(vertical: 6),
-                            color: Theme.of(context).colorScheme.surface,
+                        return Card(
+                          elevation: 4,
+                          margin: const EdgeInsets.symmetric(vertical: 6),
+                          color: Theme.of(context).colorScheme.surface,
 
-                            child: ListTile(
-                              leading: CircleAvatar(
-                                backgroundColor: Colors.greenAccent.withOpacity(
-                                  0.1,
-                                ),
-                                child: Icon(
-                                  Icons.link,
-                                  color: Colors.yellowAccent,
-                                ),
+                          child: ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: Colors.greenAccent.withOpacity(
+                                0.1,
                               ),
-                              title: Text(
-                                "Received",
-                                style: Theme.of(context).textTheme.bodyMedium,
-                              ),
-                              subtitle: Text(
-                                msg,
-                                style: Theme.of(context).textTheme.bodyMedium,
-                              ),
-                              trailing: Text(
-                                formattedAmount,
-                                style: amountStyle,
+                              child: Icon(
+                                Icons.link,
+                                color: Colors.yellowAccent,
                               ),
                             ),
-                          );
-                        },
-                      ),
+                            title: Text(
+                              "Received",
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                            subtitle: Text(
+                              msg,
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                            trailing: Text(formattedAmount, style: amountStyle),
+                          ),
+                        );
+                      },
                     )
                   else
                     const SizedBox(),
