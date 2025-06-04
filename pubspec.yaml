@@ -21,11 +21,15 @@ dependencies:
   smooth_page_indicator: ^1.2.1
   url_launcher: ^6.3.1
   path_provider: ^2.1.5
+  freezed_annotation: ^2.0.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+  build_runner: ^2.4.0
+  # needed to add freezed for nested data types in flutter rust bridge
+  freezed: ^2.0.0
 
 flutter:
   uses-material-design: true

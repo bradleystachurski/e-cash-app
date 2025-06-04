@@ -11,11 +11,17 @@ use fedimint_lnv2_common::config::LightningClientConfig;
 use fedimint_lnv2_common::gateway_api::PaymentFee;
 use fedimint_meta_client::common::DEFAULT_META_KEY;
 use fedimint_meta_client::MetaClientInit;
-use fedimint_wallet_client::WithdrawState;
+use fedimint_wallet_client::api::WalletFederationApi;
+use fedimint_wallet_client::client_db::TweakIdx;
+use fedimint_wallet_client::{
+    DepositStateV2, WalletClientModule, WalletOperationMeta, WalletOperationMetaVariant,
+    WithdrawState,
+};
 /* AUTO INJECTED BY flutter_rust_bridge. This line may not be accurate, and you can change it according to your needs. */
 use flutter_rust_bridge::frb;
 use serde_json::to_value;
-use tokio::sync::{OnceCell, RwLock};
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
+use tokio::sync::{broadcast, OnceCell, RwLock};
 
 use std::path::PathBuf;
 use std::time::UNIX_EPOCH;
@@ -60,6 +66,7 @@ use lightning_invoice::{Bolt11Invoice, Description};
 use serde::Serialize;
 
 use crate::db::{FederationConfig, FederationConfigKey, FederationConfigKeyPrefix};
+use crate::frb_generated::StreamSink;
 
 pub const DEFAULT_RELAYS: &[&str] = &[
     "wss://relay.nostr.band",
@@ -78,6 +85,50 @@ static MULTIMINT: OnceCell<Arc<RwLock<Multimint>>> = OnceCell::const_new();
 
 async fn get_multimint() -> Arc<RwLock<Multimint>> {
     MULTIMINT.get().expect("Multimint not initialized").clone()
+}
+
+#[frb]
+pub async fn subscribe_deposits(
+    sink: StreamSink<DepositEvent>,
+    federation_id: FederationId,
+) -> anyhow::Result<()> {
+    let multimint = get_multimint().await;
+    let mm = multimint.read().await;
+    let mut rx = mm.event_bus.subscribe();
+
+    while let Ok(evt) = rx.recv().await {
+        if evt.federation_id == federation_id {
+            if sink.add(evt).is_err() {
+                break;
+            }
+        }
+    }
+
+    Ok(())
+}
+
+#[frb]
+pub async fn monitor_deposit_address(
+    federation_id: FederationId,
+    address: String,
+) -> anyhow::Result<()> {
+    let address = bitcoin::Address::from_str(&address)?;
+
+    let multimint = get_multimint().await;
+    let mm = multimint.read().await;
+    let client = mm
+        .clients
+        .get(&federation_id)
+        .expect("No federation exists");
+    let wallet_module = client.get_first_module::<WalletClientModule>()?;
+
+    let tweak_idx = wallet_module.find_tweak_idx_by_address(address).await?;
+
+    mm.monitor_tx
+        .send((federation_id, tweak_idx))
+        .expect("failed to send new tweak index");
+
+    Ok(())
 }
 
 #[frb]
@@ -324,6 +375,53 @@ pub async fn refund(federation_id: &FederationId) -> anyhow::Result<(String, u64
     mm.refund(federation_id).await
 }
 
+#[frb]
+pub async fn allocate_deposit_address(federation_id: &FederationId) -> anyhow::Result<String> {
+    let multimint = get_multimint().await;
+    let mm = multimint.read().await;
+    mm.allocate_deposit_address(federation_id).await
+}
+
+#[derive(Clone, Eq, PartialEq, Serialize, Debug)]
+pub struct MempoolEvent {
+    amount: u64,
+    txid: String,
+}
+
+#[derive(Clone, Eq, PartialEq, Serialize, Debug)]
+pub struct AwaitingConfsEvent {
+    amount: u64,
+    txid: String,
+    block_height: u64,
+    needed: u64,
+}
+
+#[derive(Clone, Eq, PartialEq, Serialize, Debug)]
+pub struct ConfirmedEvent {
+    amount: u64,
+    txid: String,
+}
+
+#[derive(Clone, Eq, PartialEq, Serialize, Debug)]
+pub struct ClaimedEvent {
+    amount: u64,
+    txid: String,
+}
+
+#[derive(Clone, Eq, PartialEq, Serialize, Debug)]
+pub enum DepositEventKind {
+    Mempool(MempoolEvent),
+    AwaitingConfs(AwaitingConfsEvent),
+    Confirmed(ConfirmedEvent),
+    Claimed(ClaimedEvent),
+}
+
+#[derive(Clone, Eq, PartialEq, Serialize, Debug)]
+pub struct DepositEvent {
+    pub federation_id: FederationId,
+    pub event_kind: DepositEventKind,
+}
+
 #[derive(Clone, Eq, PartialEq, Serialize, Debug)]
 pub struct PaymentPreview {
     amount_msats: u64,
@@ -500,6 +598,10 @@ pub struct Multimint {
     nostr_client: nostr_sdk::Client,
     public_federations: Vec<PublicFederation>,
     task_group: TaskGroup,
+    // TODO: rename
+    monitor_tx: UnboundedSender<(FederationId, TweakIdx)>,
+    // TODO: if this approach works, use more generic event type
+    event_bus: tokio::sync::broadcast::Sender<DepositEvent>,
 }
 
 // TODO: I dont like that this is separate from federation selector
@@ -540,12 +642,17 @@ impl Multimint {
                 mnemonic
             };
 
+        println!("multimint new");
+        println!("mnemonic: {:#}", mnemonic);
         let mut modules = ClientModuleInitRegistry::new();
         modules.attach(LightningClientInit::default());
         modules.attach(MintClientInit);
         modules.attach(WalletClientInit::default());
         modules.attach(fedimint_lnv2_client::LightningClientInit::default());
         modules.attach(MetaClientInit);
+
+        let (monitor_tx, monitor_rx) = unbounded_channel::<(FederationId, TweakIdx)>();
+        let (event_bus_tx, _event_bus_rx) = broadcast::channel::<DepositEvent>(32);
 
         let mut multimint = Self {
             db,
@@ -555,9 +662,228 @@ impl Multimint {
             nostr_client: Multimint::create_nostr_client().await,
             public_federations: vec![],
             task_group: TaskGroup::new(),
+            monitor_tx: monitor_tx.clone(),
+            event_bus: event_bus_tx.clone(),
         };
+
         multimint.load_clients().await?;
+        multimint.spawn_pegin_address_watcher(monitor_rx).await?;
+        multimint.monitor_all_unused_pegin_addresses().await?;
+
         Ok(multimint)
+    }
+
+    // TODO: rename
+    // it can also be used for rechecking addresses
+    async fn spawn_pegin_address_watcher(
+        &self,
+        mut monitor_rx: UnboundedReceiver<(FederationId, TweakIdx)>,
+    ) -> anyhow::Result<()> {
+        let event_bus_clone = self.event_bus.clone();
+        let task_group_clone = self.task_group.clone();
+        let clients_clone = self.clients.clone();
+
+        self.task_group
+            .spawn_cancellable("pegin address watcher", async move {
+                while let Some((fed_id, tweak_idx)) = monitor_rx.recv().await {
+                    let event_bus = event_bus_clone.clone();
+                    let client = clients_clone
+                        .get(&fed_id)
+                        .expect("No federation exists")
+                        .clone();
+
+                    task_group_clone.spawn_cancellable("tweak index watcher", async move {
+                        if let Err(e) =
+                            Self::watch_pegin_address(fed_id, client, tweak_idx, event_bus).await
+                        {
+                            eprintln!("watch_pegin_address({}) failed: {:?}", tweak_idx.0, e);
+                        }
+                    });
+                }
+            });
+
+        Ok(())
+    }
+
+    async fn watch_pegin_address(
+        federation_id: FederationId,
+        client: ClientHandleArc,
+        tweak_idx: TweakIdx,
+        events_tx: broadcast::Sender<DepositEvent>,
+    ) -> anyhow::Result<()> {
+        let wallet_module = client.get_first_module::<WalletClientModule>()?;
+
+        let data = match wallet_module.get_pegin_tweak_idx(tweak_idx).await {
+            Ok(d) => d,
+            Err(e) if e.to_string().contains("TweakIdx not found") => return Ok(()),
+            Err(e) => return Err(e),
+        };
+
+        let mut updates = wallet_module
+            .subscribe_deposit(data.operation_id)
+            .await?
+            .into_stream();
+
+        while let Some(state) = updates.next().await {
+            match state {
+                DepositStateV2::WaitingForTransaction => {}
+                DepositStateV2::WaitingForConfirmation {
+                    btc_deposited,
+                    btc_out_point,
+                } => {
+                    let deposit_event = DepositEvent {
+                        federation_id,
+                        event_kind: DepositEventKind::Mempool(MempoolEvent {
+                            // pretty messy, curious if we can improve units overall
+                            amount: Amount::from_sats(btc_deposited.to_sat()).msats,
+                            txid: btc_out_point.txid.to_string(),
+                        }),
+                    };
+
+                    // TODO: introduce replay on subscription since we don't see events like mempool on app restart
+                    let _ = events_tx.send(deposit_event);
+
+                    let client = reqwest::Client::new();
+
+                    // let api_url = "https://mutinynet.com/api".to_string();
+                    let api_url = "http://localhost:19610".to_string();
+
+                    let tx_height = fedimint_core::util::retry(
+                        "get confirmed block height",
+                        fedimint_core::util::backoff_util::background_backoff(),
+                        || async {
+                            let resp = client
+                                .get(format!("{}/tx/{}", api_url, btc_out_point.txid.to_string(),))
+                                .send()
+                                .await?
+                                .error_for_status()?
+                                .text()
+                                .await?;
+
+                            serde_json::from_str::<serde_json::Value>(&resp)?
+                                .get("status")
+                                .and_then(|s| s.get("block_height"))
+                                .and_then(|h| h.as_u64())
+                                .ok_or_else(|| {
+                                    anyhow::anyhow!("no confirmation height yet, still in mempool")
+                                })
+                        },
+                    )
+                    .await
+                    .expect("Never gives up");
+
+                    let every_10_secs = fedimint_core::util::backoff_util::custom_backoff(
+                        Duration::from_secs(10),
+                        Duration::from_secs(10),
+                        None,
+                    );
+
+                    fedimint_core::util::retry("consensus confirmation", every_10_secs, || async {
+                        let consensus_height = wallet_module
+                            .api
+                            .fetch_consensus_block_count()
+                            .await?
+                            .saturating_sub(1);
+
+                        let needed = tx_height.saturating_sub(consensus_height);
+
+                        let deposit_event = DepositEvent {
+                            federation_id,
+                            event_kind: DepositEventKind::AwaitingConfs(AwaitingConfsEvent {
+                                amount: Amount::from_sats(btc_deposited.to_sat()).msats,
+                                txid: btc_out_point.txid.to_string(),
+                                block_height: tx_height,
+                                needed,
+                            }),
+                        };
+
+                        let _ = events_tx.send(deposit_event);
+
+                        anyhow::ensure!(needed == 0, "{} more confs needed", needed);
+
+                        Ok(())
+                    })
+                    .await
+                    .expect("Never gives up");
+
+                    // trigger another check of pegin monitor for faster claim
+                    wallet_module.recheck_pegin_address(tweak_idx).await?;
+                }
+                DepositStateV2::Confirmed {
+                    btc_deposited,
+                    btc_out_point,
+                } => {
+                    let deposit_event = DepositEvent {
+                        federation_id,
+                        event_kind: DepositEventKind::Confirmed(ConfirmedEvent {
+                            amount: Amount::from_sats(btc_deposited.to_sat()).msats,
+                            txid: btc_out_point.txid.to_string(),
+                        }),
+                    };
+
+                    let _ = events_tx.send(deposit_event);
+                }
+                DepositStateV2::Claimed {
+                    btc_deposited,
+                    btc_out_point,
+                } => {
+                    let deposit_event = DepositEvent {
+                        federation_id,
+                        event_kind: DepositEventKind::Claimed(ClaimedEvent {
+                            amount: Amount::from_sats(btc_deposited.to_sat()).msats,
+                            txid: btc_out_point.txid.to_string(),
+                        }),
+                    };
+
+                    let _ = events_tx.send(deposit_event);
+
+                    println!("tx claimed");
+                }
+                DepositStateV2::Failed(e) => {
+                    println!("deposit failed: {:?}", e);
+                    break;
+                }
+            };
+        }
+
+        Ok(())
+    }
+
+    // TODO: docs
+    async fn monitor_all_unused_pegin_addresses(&self) -> anyhow::Result<()> {
+        let federation_ids = self
+            .federations()
+            .await
+            .into_iter()
+            .map(|fed| fed.federation_id);
+        let monitor_tx_clone = self.monitor_tx.clone();
+        let clients_clone = self.clients.clone();
+
+        self.task_group
+            .spawn_cancellable("unused address monitor", async move {
+                for fed_id in federation_ids {
+                    let client = clients_clone.get(&fed_id).expect("No federation exists");
+                    let wallet_module = client
+                        .get_first_module::<WalletClientModule>()
+                        .expect("No wallet module exists");
+
+                    let mut tweak_idx = TweakIdx(0);
+                    while let Ok(data) = wallet_module.get_pegin_tweak_idx(tweak_idx).await {
+                        if data.claimed.is_empty() {
+                            // we found an allocated, unused address so we need to monitor
+                            if let Err(_) = monitor_tx_clone.send((fed_id, tweak_idx)) {
+                                eprintln!(
+                                    "failed to monitor tweak index {:?} for fed {:?}",
+                                    tweak_idx, fed_id
+                                );
+                            }
+                        }
+                        tweak_idx = tweak_idx.next();
+                    }
+                }
+            });
+
+        Ok(())
     }
 
     async fn load_clients(&mut self) -> anyhow::Result<()> {
@@ -1417,6 +1743,29 @@ impl Multimint {
                             }
                         }
                     }
+                    "wallet" => {
+                        let meta = op_log_val.meta::<WalletOperationMeta>();
+                        let outcome = op_log_val.outcome::<DepositStateV2>();
+                        match meta.variant {
+                            WalletOperationMetaVariant::Deposit { .. } => {
+                                if let Some(DepositStateV2::Claimed { btc_deposited, .. }) = outcome
+                                {
+                                    let amount = Amount::from_sats(btc_deposited.to_sat()).msats;
+                                    Some(Transaction {
+                                        received: true,
+                                        amount,
+                                        module: "wallet".to_string(),
+                                        timestamp,
+                                        operation_id: key.operation_id.0.to_vec(),
+                                    })
+                                } else {
+                                    None
+                                }
+                            }
+                            WalletOperationMetaVariant::Withdraw { .. } => None,
+                            WalletOperationMetaVariant::RbfWithdraw { .. } => None,
+                        }
+                    }
                     _ => None,
                 };
 
@@ -1544,7 +1893,7 @@ impl Multimint {
         // hardcoded address for the Mutinynet faucet
         // https://faucet.mutinynet.com/
         let address =
-            bitcoin::address::Address::from_str("tb1qd28npep0s8frcm3y7dxqajkcy2m40eysplyr9v")?;
+            bitcoin::address::Address::from_str("bcrt1qqq27qhdfs7hj9cvaylz3ssc33c4ph348csnj5u")?;
 
         let client = self
             .clients
@@ -1592,5 +1941,23 @@ impl Multimint {
         };
 
         Ok((txid, fees_sat))
+    }
+
+    pub async fn allocate_deposit_address(
+        &self,
+        federation_id: &FederationId,
+    ) -> anyhow::Result<String> {
+        let client = self
+            .clients
+            .get(federation_id)
+            .expect("No federation exists");
+        let wallet_module =
+            client.get_first_module::<fedimint_wallet_client::WalletClientModule>()?;
+
+        let (_, address, _) = wallet_module.safe_allocate_deposit_address(()).await?;
+        // TODO: this isn't very elegant, but let's see if it works
+        monitor_deposit_address(*federation_id, address.to_string()).await?;
+
+        Ok(address.to_string())
     }
 }

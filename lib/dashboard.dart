@@ -2,12 +2,14 @@ import 'package:carbine/lib.dart';
 import 'package:carbine/main.dart';
 import 'package:carbine/number_pad.dart';
 import 'package:carbine/payment_selector.dart';
+import 'package:carbine/onchain_receive.dart';
 import 'package:carbine/scan.dart';
 import 'package:carbine/theme.dart';
 import 'package:carbine/refund.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_speed_dial/flutter_speed_dial.dart';
 import 'package:intl/intl.dart';
+import 'dart:async';
 
 class Dashboard extends StatefulWidget {
   final FederationSelector fed;
@@ -36,17 +38,62 @@ class _DashboardState extends State<Dashboard> {
 
   VoidCallback? _pendingAction;
 
+  late Stream<DepositEvent> depositEvents;
+  late StreamSubscription<DepositEvent> _claimSubscription;
+  late StreamSubscription<DepositEvent> _depositSubscription;
+  final Map<String, DepositEvent> _depositMap = {};
+
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
     _loadBalance();
     _loadTransactions();
+    depositEvents =
+        subscribeDeposits(
+          federationId: widget.fed.federationId,
+        ).asBroadcastStream();
+    // 1) reload balance/txs on claim, but guard against unmounted
+    _claimSubscription = depositEvents.listen((event) {
+      if (event.eventKind is DepositEventKind_Claimed) {
+        final claimedEvt = (event.eventKind as DepositEventKind_Claimed).field0;
+        print('pattern match claimed: ${claimedEvt.txid}');
+        if (!mounted) return;
+        _loadBalance();
+        Timer(const Duration(milliseconds: 100), () {
+          if (!mounted) return;
+          _loadTransactions();
+        });
+      }
+    });
+
+    _depositSubscription = depositEvents.listen((event) {
+      String txid;
+      switch (event.eventKind) {
+        case DepositEventKind_Mempool(field0: final mempoolEvt):
+          txid = mempoolEvt.txid;
+          break;
+        case DepositEventKind_AwaitingConfs(field0: final awaitEvt):
+          txid = awaitEvt.txid;
+          break;
+        case DepositEventKind_Confirmed(field0: final confirmedEvt):
+          txid = confirmedEvt.txid;
+          break;
+        case DepositEventKind_Claimed(field0: final claimedEvt):
+          txid = claimedEvt.txid;
+          break;
+      }
+      setState(() {
+        _depositMap[txid] = event;
+      });
+    });
   }
 
   @override
   void dispose() {
     _scrollController.dispose();
+    _depositSubscription.cancel();
+    _claimSubscription.cancel();
     super.dispose();
   }
 
@@ -89,6 +136,7 @@ class _DashboardState extends State<Dashboard> {
 
   Future<void> _loadBalance() async {
     final bal = await balance(federationId: widget.fed.federationId);
+    if (!mounted) return;
     setState(() {
       balanceMsats = bal;
       isLoadingBalance = false;
@@ -100,12 +148,14 @@ class _DashboardState extends State<Dashboard> {
     _isFetchingMore = true;
 
     if (!loadMore) {
-      setState(() {
-        isLoadingTransactions = true;
-        _transactions.clear();
-        _hasMore = true;
-        _lastTransaction = null;
-      });
+      if (mounted) {
+        setState(() {
+          isLoadingTransactions = true;
+          _transactions.clear();
+          _hasMore = true;
+          _lastTransaction = null;
+        });
+      }
     }
 
     final newTxs = await transactions(
@@ -115,6 +165,7 @@ class _DashboardState extends State<Dashboard> {
       modules: _getKindsForSelectedPaymentType(),
     );
 
+    if (!mounted) return;
     setState(() {
       _transactions.addAll(newTxs);
       if (newTxs.length < 10) {
@@ -157,6 +208,13 @@ class _DashboardState extends State<Dashboard> {
           builder:
               (context) =>
                   NumberPad(fed: widget.fed, paymentType: _selectedPaymentType),
+        ),
+      );
+    } else if (_selectedPaymentType == PaymentType.onchain) {
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => OnChainReceive(fed: widget.fed),
         ),
       );
     } else if (_selectedPaymentType == PaymentType.ecash) {
@@ -306,14 +364,110 @@ class _DashboardState extends State<Dashboard> {
             const SizedBox(height: 48),
             Align(
               alignment: Alignment.centerLeft,
-              child: Text(
-                "Recent Transactions",
-                style: Theme.of(
-                  context,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Recent Transactions",
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  if (_selectedPaymentType == PaymentType.onchain)
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: NeverScrollableScrollPhysics(),
+                      itemCount: _depositMap.length,
+                      itemBuilder: (context, index) {
+                        final events =
+                            _depositMap.values.toList()..sort((a, b) {
+                              final aMempool =
+                                  a.eventKind is DepositEventKind_Mempool;
+                              final bMempool =
+                                  b.eventKind is DepositEventKind_Mempool;
+                              if (aMempool && !bMempool) return -1;
+                              if (!aMempool && bMempool) return 1;
+                              // both mempool or both non-mempool: compare needed confs
+                              final BigInt na =
+                                  a.eventKind is DepositEventKind_AwaitingConfs
+                                      ? (a.eventKind
+                                              as DepositEventKind_AwaitingConfs)
+                                          .field0
+                                          .needed
+                                      : BigInt.zero;
+                              final BigInt nb =
+                                  b.eventKind is DepositEventKind_AwaitingConfs
+                                      ? (b.eventKind
+                                              as DepositEventKind_AwaitingConfs)
+                                          .field0
+                                          .needed
+                                      : BigInt.zero;
+                              return nb.compareTo(na);
+                            });
+                        final event = events[index];
+
+                        String msg;
+                        BigInt amount;
+                        // note in PR:
+                        // `freezed_annotation` was introduced so we can do things like this. Without freezed, we won't get codegen for the union/variant classes in dart.
+                        switch (event.eventKind) {
+                          case DepositEventKind_Mempool(field0: final e):
+                            msg = 'Tx in mempool';
+                            amount = e.amount;
+                            break;
+                          case DepositEventKind_AwaitingConfs(field0: final e):
+                            msg =
+                                'Tx included in block ${e.blockHeight}. Remaining confs: ${e.needed}';
+                            amount = e.amount;
+                            break;
+                          case DepositEventKind_Confirmed(field0: final e):
+                            msg = 'Tx confirmed, claiming ecash';
+                            amount = e.amount;
+                            break;
+                          case DepositEventKind_Claimed(field0: final e):
+                            return const SizedBox();
+                        }
+
+                        final amountStyle = TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.greenAccent,
+                        );
+
+                        final formattedAmount = formatBalance(amount, false);
+
+                        return Card(
+                          elevation: 4,
+                          margin: const EdgeInsets.symmetric(vertical: 6),
+                          color: Theme.of(context).colorScheme.surface,
+
+                          child: ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: Colors.greenAccent.withOpacity(
+                                0.1,
+                              ),
+                              child: Icon(
+                                Icons.link,
+                                color: Colors.yellowAccent,
+                              ),
+                            ),
+                            title: Text(
+                              "Pending Receive",
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                            subtitle: Text(
+                              msg,
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                            trailing: Text(formattedAmount, style: amountStyle),
+                          ),
+                        );
+                      },
+                    )
+                  else
+                    const SizedBox(),
+                ],
               ),
             ),
-            const SizedBox(height: 16),
             isLoadingTransactions
                 ? const CircularProgressIndicator()
                 : _transactions.isEmpty
