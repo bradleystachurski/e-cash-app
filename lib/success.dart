@@ -7,12 +7,14 @@ class Success extends StatelessWidget {
   final bool lightning;
   final bool received;
   final BigInt amountMsats;
+  final String? txid;
 
   const Success({
     super.key,
     required this.lightning,
     required this.received,
     required this.amountMsats,
+    this.txid,
   });
 
   @override
@@ -70,6 +72,26 @@ class Success extends StatelessWidget {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 12),
+                  if (txid != null) ...[
+                    Text(
+                      'Transaction ID:',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    SelectableText(
+                      txid!,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[400],
+                        fontFamily: 'monospace',
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ],
               ),
             ),

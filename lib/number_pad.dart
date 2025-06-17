@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:carbine/ecash_send.dart';
 import 'package:carbine/lib.dart';
 import 'package:carbine/multimint.dart';
+import 'package:carbine/onchain_send.dart';
 import 'package:carbine/request.dart';
 import 'package:carbine/theme.dart';
 import 'package:carbine/utils.dart';
@@ -28,6 +29,7 @@ class _NumberPadState extends State<NumberPad> {
   String _rawAmount = '';
   bool _creating = false;
   double? _btcPriceUsd;
+  bool _loadingMax = false;
 
   @override
   void initState() {
@@ -77,6 +79,32 @@ class _NumberPadState extends State<NumberPad> {
     return '\$${usdValue.toStringAsFixed(2)}';
   }
 
+  Future<void> _onMaxPressed() async {
+    if (widget.paymentType != PaymentType.onchain) return;
+
+    setState(() => _loadingMax = true);
+
+    try {
+      // For now, use a default address to calculate max withdrawable
+      // In a real implementation, we'd need to get the destination address first
+      const defaultAddress = 'tb1qd28npep0s8frcm3y7dxqajkcy2m40eysplyr9v';
+      final maxAmount = await getMaxWithdrawableAmount(
+        federationId: widget.fed.federationId,
+        address: defaultAddress,
+      );
+      setState(() {
+        _rawAmount = maxAmount.toString();
+      });
+    } catch (e) {
+      AppLogger.instance.error('Failed to get max withdrawable amount: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to calculate max amount')),
+      );
+    } finally {
+      setState(() => _loadingMax = false);
+    }
+  }
+
   Future<void> _onConfirm() async {
     setState(() => _creating = true);
     final amountSats = BigInt.tryParse(_rawAmount);
@@ -115,7 +143,10 @@ class _NumberPadState extends State<NumberPad> {
           child: EcashSend(fed: widget.fed, amountSats: amountSats),
         );
       } else if (widget.paymentType == PaymentType.onchain) {
-        AppLogger.instance.info('Generate bitcoin address and QR code');
+        showCarbineModalBottomSheet(
+          context: context,
+          child: OnchainSend(fed: widget.fed, amountSats: amountSats),
+        );
       }
     }
     setState(() => _creating = false);
@@ -240,6 +271,26 @@ class _NumberPadState extends State<NumberPad> {
                       fontSize: 24,
                       color: Colors.grey,
                     ),
+                    leftWidget:
+                        widget.paymentType == PaymentType.onchain
+                            ? IconButton(
+                              onPressed: _loadingMax ? null : _onMaxPressed,
+                              icon:
+                                  _loadingMax
+                                      ? const SizedBox(
+                                        width: 16,
+                                        height: 16,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.grey,
+                                        ),
+                                      )
+                                      : const Icon(
+                                        Icons.account_balance_wallet,
+                                      ),
+                              tooltip: 'Max',
+                            )
+                            : null,
                     rightWidget: IconButton(
                       onPressed: () {
                         setState(() {

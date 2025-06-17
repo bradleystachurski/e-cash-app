@@ -464,3 +464,47 @@ pub async fn wallet_summary(invite: String) -> anyhow::Result<Vec<Utxo>> {
     let multimint = get_multimint().await;
     multimint.wallet_summary(invite).await
 }
+
+#[frb]
+pub async fn calculate_withdraw_fees(
+    federation_id: &FederationId,
+    address: String,
+    amount_sats: u64,
+) -> anyhow::Result<u64> {
+    let multimint = get_multimint().await;
+    multimint
+        .calculate_withdraw_fees(federation_id, address, amount_sats)
+        .await
+}
+
+#[frb]
+pub async fn withdraw_to_address(
+    federation_id: &FederationId,
+    address: String,
+    amount_sats: u64,
+) -> anyhow::Result<OperationId> {
+    let multimint = get_multimint().await;
+    multimint
+        .withdraw_to_address(federation_id, address, amount_sats)
+        .await
+}
+
+#[frb]
+pub async fn await_withdraw(
+    federation_id: &FederationId,
+    operation_id: OperationId,
+) -> anyhow::Result<String> {
+    let multimint = get_multimint().await;
+    multimint.await_withdraw(federation_id, operation_id).await
+}
+
+#[frb]
+pub async fn get_max_withdrawable_amount(
+    federation_id: &FederationId,
+    address: String,
+) -> anyhow::Result<u64> {
+    let multimint = get_multimint().await;
+    multimint
+        .get_max_withdrawable_amount(federation_id, address)
+        .await
+}

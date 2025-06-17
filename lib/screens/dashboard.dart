@@ -69,7 +69,7 @@ class _DashboardState extends State<Dashboard> {
         context: context,
         child: PaymentMethodSelector(fed: widget.fed),
       );
-    } else if (_selectedPaymentType == PaymentType.ecash) {
+    } else if (_selectedPaymentType == PaymentType.ecash || _selectedPaymentType == PaymentType.onchain) {
       await Navigator.push(
         context,
         MaterialPageRoute(

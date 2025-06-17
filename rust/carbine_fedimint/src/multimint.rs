@@ -388,8 +388,8 @@ impl Multimint {
                         bitcoin::Network::Signet => "https://mutinynet.com/api".to_string(),
                         bitcoin::Network::Regtest => {
                             // referencing devimint, uncomment for regtest
-                            // "http://localhost:{FM_PORT_ESPLORA}".to_string()
-                            panic!("Regtest requires manually setting the connection params")
+                            "http://localhost:22347".to_string()
+                            // panic!("Regtest requires manually setting the connection params")
                         }
                         network => {
                             panic!("{network} is not a supported network")
@@ -1806,6 +1806,123 @@ impl Multimint {
         };
 
         Ok((txid, fees_sat))
+    }
+
+    pub async fn calculate_withdraw_fees(
+        &self,
+        federation_id: &FederationId,
+        address: String,
+        amount_sats: u64,
+    ) -> anyhow::Result<u64> {
+        let client = self
+            .clients
+            .read()
+            .await
+            .get(federation_id)
+            .context("No federation exists")?
+            .clone();
+        let wallet_module =
+            client.get_first_module::<fedimint_wallet_client::WalletClientModule>()?;
+
+        let address = bitcoin::address::Address::from_str(&address)?;
+        let address = address.require_network(wallet_module.get_network())?;
+        let amount = bitcoin::Amount::from_sat(amount_sats);
+
+        let fees = wallet_module.get_withdraw_fees(&address, amount).await?;
+        Ok(fees.amount().to_sat())
+    }
+
+    pub async fn withdraw_to_address(
+        &self,
+        federation_id: &FederationId,
+        address: String,
+        amount_sats: u64,
+    ) -> anyhow::Result<OperationId> {
+        let client = self
+            .clients
+            .read()
+            .await
+            .get(federation_id)
+            .context("No federation exists")?
+            .clone();
+        let wallet_module =
+            client.get_first_module::<fedimint_wallet_client::WalletClientModule>()?;
+
+        let address = bitcoin::address::Address::from_str(&address)?;
+        let address = address.require_network(wallet_module.get_network())?;
+        let amount = bitcoin::Amount::from_sat(amount_sats);
+
+        let fees = wallet_module.get_withdraw_fees(&address, amount).await?;
+        let operation_id = wallet_module.withdraw(&address, amount, fees, ()).await?;
+        Ok(operation_id)
+    }
+
+    pub async fn await_withdraw(
+        &self,
+        federation_id: &FederationId,
+        operation_id: OperationId,
+    ) -> anyhow::Result<String> {
+        let client = self
+            .clients
+            .read()
+            .await
+            .get(federation_id)
+            .context("No federation exists")?
+            .clone();
+        let wallet_module =
+            client.get_first_module::<fedimint_wallet_client::WalletClientModule>()?;
+
+        let mut updates = wallet_module
+            .subscribe_withdraw_updates(operation_id)
+            .await?
+            .into_stream();
+
+        let txid = loop {
+            let update = updates
+                .next()
+                .await
+                .ok_or_else(|| anyhow!("Update stream ended without outcome"))?;
+
+            match update {
+                WithdrawState::Succeeded(txid) => {
+                    break txid.consensus_encode_to_hex();
+                }
+                WithdrawState::Failed(e) => {
+                    bail!("Withdraw failed: {e}");
+                }
+                WithdrawState::Created => {
+                    continue;
+                }
+            }
+        };
+
+        Ok(txid)
+    }
+
+    pub async fn get_max_withdrawable_amount(
+        &self,
+        federation_id: &FederationId,
+        address: String,
+    ) -> anyhow::Result<u64> {
+        let client = self
+            .clients
+            .read()
+            .await
+            .get(federation_id)
+            .context("No federation exists")?
+            .clone();
+        let wallet_module =
+            client.get_first_module::<fedimint_wallet_client::WalletClientModule>()?;
+
+        let address = bitcoin::address::Address::from_str(&address)?;
+        let address = address.require_network(wallet_module.get_network())?;
+        let balance = bitcoin::Amount::from_sat(client.get_balance().await.msats / 1000);
+        let fees = wallet_module.get_withdraw_fees(&address, balance).await?;
+        let max_withdrawable = balance
+            .checked_sub(fees.amount())
+            .context("Not enough funds to pay fees")?;
+
+        Ok(max_withdrawable.to_sat())
     }
 
     pub async fn monitor_deposit_address(

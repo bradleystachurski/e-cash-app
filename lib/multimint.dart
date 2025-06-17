@@ -81,7 +81,18 @@ abstract class Multimint implements RustOpaqueInterface {
     required OperationId operationId,
   });
 
+  Future<String> awaitWithdraw({
+    required FederationId federationId,
+    required OperationId operationId,
+  });
+
   Future<BigInt> balance({required FederationId federationId});
+
+  Future<BigInt> calculateWithdrawFees({
+    required FederationId federationId,
+    required String address,
+    required BigInt amountSats,
+  });
 
   Future<bool> containsClient({required FederationId federationId});
 
@@ -89,6 +100,11 @@ abstract class Multimint implements RustOpaqueInterface {
 
   Future<(FederationMeta, FederationSelector)> getFederationMeta({
     required String invite,
+  });
+
+  Future<BigInt> getMaxWithdrawableAmount({
+    required FederationId federationId,
+    required String address,
   });
 
   Future<List<String>> getMnemonic();
@@ -173,6 +189,12 @@ abstract class Multimint implements RustOpaqueInterface {
   Future<FederationSelector> waitForRecovery({required String inviteCode});
 
   Future<List<Utxo>> walletSummary({required String invite});
+
+  Future<OperationId> withdrawToAddress({
+    required FederationId federationId,
+    required String address,
+    required BigInt amountSats,
+  });
 }
 
 // Rust type: RustOpaqueMoi<flutter_rust_bridge::for_generated::RustAutoOpaqueInner<OperationId>>
