@@ -69,7 +69,8 @@ class _DashboardState extends State<Dashboard> {
         context: context,
         child: PaymentMethodSelector(fed: widget.fed),
       );
-    } else if (_selectedPaymentType == PaymentType.ecash || _selectedPaymentType == PaymentType.onchain) {
+    } else if (_selectedPaymentType == PaymentType.ecash ||
+        _selectedPaymentType == PaymentType.onchain) {
       await Navigator.push(
         context,
         MaterialPageRoute(
@@ -149,21 +150,21 @@ class _DashboardState extends State<Dashboard> {
                     backgroundColor: Colors.green,
                     onTap: () => _scheduleAction(_onReceivePressed),
                   ),
-                  if (balanceMsats != null && balanceMsats! > BigInt.zero)
+                  if (balanceMsats != null && balanceMsats! > BigInt.zero) ...[
+                    SpeedDialChild(
+                      child: const Icon(Icons.upload),
+                      label: 'Send',
+                      backgroundColor: Colors.blue,
+                      onTap: () => _scheduleAction(_onSendPressed),
+                    ),
                     if (_selectedPaymentType == PaymentType.onchain)
                       SpeedDialChild(
                         child: const Icon(Icons.reply),
                         label: 'Refund',
                         backgroundColor: Colors.orange,
                         onTap: () => _scheduleAction(_onRefundPressed),
-                      )
-                    else
-                      SpeedDialChild(
-                        child: const Icon(Icons.upload),
-                        label: 'Send',
-                        backgroundColor: Colors.blue,
-                        onTap: () => _scheduleAction(_onSendPressed),
                       ),
+                  ],
                 ],
               ),
       body: Padding(
