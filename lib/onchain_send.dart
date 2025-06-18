@@ -187,19 +187,9 @@ class _OnchainSendState extends State<OnchainSend> {
               ),
               const SizedBox(height: 12),
               Text(
-                "Withdraw On-chain",
+                formatBalance(widget.amountSats * BigInt.from(1000), false),
                 style: Theme.of(context).textTheme.headlineSmall,
                 textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                "Withdrawing ${widget.amountSats} sats",
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withOpacity(0.7),
-                ),
               ),
             ],
           ),
@@ -217,7 +207,6 @@ class _OnchainSendState extends State<OnchainSend> {
                 decoration: InputDecoration(
                   labelText: 'Bitcoin Address',
                   hintText: 'Enter destination address',
-                  prefixIcon: const Icon(Icons.account_balance_wallet),
                   suffixIcon: IconButton(
                     icon: const Icon(Icons.paste),
                     onPressed: _pasteFromClipboard,
@@ -281,17 +270,27 @@ class _OnchainSendState extends State<OnchainSend> {
                       buildDetailRow(
                         Theme.of(context),
                         'Amount',
-                        '${widget.amountSats} sats',
+                        formatBalance(
+                          widget.amountSats * BigInt.from(1000),
+                          false,
+                        ),
                       ),
                       buildDetailRow(
                         Theme.of(context),
                         'Fee',
-                        '$_feeAmountSats sats',
+                        formatBalance(
+                          _feeAmountSats! * BigInt.from(1000),
+                          false,
+                        ),
                       ),
                       buildDetailRow(
                         Theme.of(context),
                         'Total',
-                        '${widget.amountSats + _feeAmountSats!} sats',
+                        formatBalance(
+                          (widget.amountSats + _feeAmountSats!) *
+                              BigInt.from(1000),
+                          false,
+                        ),
                       ),
                       Padding(
                         padding: const EdgeInsets.only(top: 8),
