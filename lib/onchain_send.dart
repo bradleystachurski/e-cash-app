@@ -353,8 +353,13 @@ class _OnchainSendState extends State<OnchainSend> {
                         ),
                         child:
                             _withdrawing
-                                ? const CircularProgressIndicator(
-                                  color: Colors.black,
+                                ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.black,
+                                    strokeWidth: 2,
+                                  ),
                                 )
                                 : const Text('Confirm Withdrawal'),
                       ),

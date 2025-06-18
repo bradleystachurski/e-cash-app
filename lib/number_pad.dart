@@ -93,7 +93,7 @@ class _NumberPadState extends State<NumberPad> {
     try {
       // For now, use a default address to calculate max withdrawable
       // In a real implementation, we'd need to get the destination address first
-      const defaultAddress = 'tb1qd28npep0s8frcm3y7dxqajkcy2m40eysplyr9v';
+      const defaultAddress = 'bcrt1q4jut40wr03x8hpf0gkhgpuj6tqc22p8s8xscuh';
       final maxAmount = await getMaxWithdrawableAmount(
         federationId: widget.fed.federationId,
         address: defaultAddress,
