@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:carbine/lib.dart';
 import 'package:carbine/multimint.dart';
 import 'package:carbine/success.dart';
+import 'package:carbine/theme.dart';
 import 'package:carbine/utils.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -167,141 +168,193 @@ class _OnchainSendState extends State<OnchainSend> {
         DateTime.now().isBefore(_quoteExpiry!) &&
         !_withdrawing;
 
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Icon(Icons.outbound, size: 48),
-            const SizedBox(height: 12),
-            Text(
-              "Withdraw On-chain",
-              style: Theme.of(context).textTheme.headlineSmall,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              "Withdrawing ${widget.amountSats} sats",
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 24),
-
-            // Address input
-            TextField(
-              controller: _addressController,
-              decoration: InputDecoration(
-                labelText: 'Bitcoin Address',
-                hintText: 'Enter destination address',
-                prefixIcon: const Icon(Icons.account_balance_wallet),
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.paste),
-                  onPressed: _pasteFromClipboard,
-                  tooltip: 'Paste',
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Header section
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            children: [
+              Icon(
+                Icons.outbound,
+                size: 48,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                "Withdraw On-chain",
+                style: Theme.of(context).textTheme.headlineSmall,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "Withdrawing ${widget.amountSats} sats",
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withOpacity(0.7),
                 ),
               ),
-              maxLines: 2,
-              minLines: 1,
-            ),
-            const SizedBox(height: 16),
+            ],
+          ),
+        ),
 
-            // Calculate fees button
-            if (_feeQuote == null)
-              ElevatedButton.icon(
-                onPressed: _loadingFees ? null : _calculateFees,
-                icon:
-                    _loadingFees
-                        ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                        : const Icon(Icons.calculate),
-                label: Text(_loadingFees ? 'Calculating...' : 'Calculate Fees'),
+        // Form section
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Address input
+              TextField(
+                controller: _addressController,
+                decoration: InputDecoration(
+                  labelText: 'Bitcoin Address',
+                  hintText: 'Enter destination address',
+                  prefixIcon: const Icon(Icons.account_balance_wallet),
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.paste),
+                    onPressed: _pasteFromClipboard,
+                    tooltip: 'Paste',
+                  ),
+                ),
+                maxLines: 2,
+                minLines: 1,
               ),
+              const SizedBox(height: 16),
 
-            // Fee quote display
-            if (_feeQuote != null) ...[
-              Card(
-                child: Padding(
+              // Calculate fees button
+              if (_feeQuote == null)
+                ElevatedButton(
+                  onPressed: _loadingFees ? null : _calculateFees,
+                  child:
+                      _loadingFees
+                          ? const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
+                              SizedBox(width: 8),
+                              Text('Calculating...'),
+                            ],
+                          )
+                          : const Text('Calculate Fees'),
+                ),
+
+              // Fee quote display
+              if (_feeQuote != null) ...[
+                const SizedBox(height: 16),
+                Text(
+                  'Withdrawal Quote',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
                   padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainer,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.primary.withOpacity(0.25),
+                    ),
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Withdrawal Quote',
-                        style: Theme.of(context).textTheme.titleMedium,
+                      buildDetailRow(
+                        Theme.of(context),
+                        'Amount',
+                        '${widget.amountSats} sats',
                       ),
-                      const SizedBox(height: 8),
-                      Text('Amount: ${widget.amountSats} sats'),
-                      Text('Fee: $_feeAmountSats sats'),
-                      Text(
-                        'Total: ${widget.amountSats + _feeAmountSats!} sats',
+                      buildDetailRow(
+                        Theme.of(context),
+                        'Fee',
+                        '$_feeAmountSats sats',
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        _getQuoteTimeRemaining(),
-                        style: TextStyle(
-                          color:
-                              _quoteExpiry != null &&
-                                      DateTime.now().isAfter(_quoteExpiry!)
-                                  ? Colors.red
-                                  : Colors.orange,
-                          fontWeight: FontWeight.bold,
+                      buildDetailRow(
+                        Theme.of(context),
+                        'Total',
+                        '${widget.amountSats + _feeAmountSats!} sats',
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          _getQuoteTimeRemaining(),
+                          style: TextStyle(
+                            color:
+                                _quoteExpiry != null &&
+                                        DateTime.now().isAfter(_quoteExpiry!)
+                                    ? Colors.red
+                                    : Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-            ],
+                const SizedBox(height: 16),
+              ],
 
-            // Action buttons
-            Row(
-              children: [
-                if (_feeQuote != null)
-                  Expanded(
-                    child: TextButton(
-                      onPressed: () {
-                        setState(() {
-                          _feeQuote = null;
-                          _feeAmountSats = null;
-                          _quoteExpiry = null;
-                        });
-                        _quoteTimer?.cancel();
-                      },
-                      child: const Text('Recalculate'),
+              // Action buttons
+              if (_feeQuote != null) ...[
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextButton(
+                        onPressed: () {
+                          setState(() {
+                            _feeQuote = null;
+                            _feeAmountSats = null;
+                            _quoteExpiry = null;
+                          });
+                          _quoteTimer?.cancel();
+                        },
+                        child: const Text('Recalculate'),
+                      ),
                     ),
-                  ),
-                if (_feeQuote != null) const SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: canWithdraw ? _withdraw : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: canWithdraw ? _withdraw : null,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor:
+                              Theme.of(context).colorScheme.primary,
+                          foregroundColor: Colors.black,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        child:
+                            _withdrawing
+                                ? const CircularProgressIndicator(
+                                  color: Colors.black,
+                                )
+                                : const Text('Confirm Withdrawal'),
+                      ),
                     ),
-                    child:
-                        _withdrawing
-                            ? const CircularProgressIndicator(
-                              color: Colors.white,
-                            )
-                            : Text(
-                              _feeQuote == null
-                                  ? 'Calculate Fees First'
-                                  : 'Confirm Withdrawal',
-                            ),
-                  ),
+                  ],
                 ),
               ],
-            ),
-          ],
+              const SizedBox(height: 16),
+            ],
+          ),
         ),
-      ),
+      ],
     );
   }
 }
