@@ -11,6 +11,7 @@ class TransactionsList extends StatefulWidget {
   final PaymentType selectedPaymentType;
   final bool recovering;
   final VoidCallback onClaimed;
+  final VoidCallback? onWithdrawCompleted;
 
   const TransactionsList({
     super.key,
@@ -18,6 +19,7 @@ class TransactionsList extends StatefulWidget {
     required this.selectedPaymentType,
     required this.recovering,
     required this.onClaimed,
+    this.onWithdrawCompleted,
   });
 
   @override
@@ -154,6 +156,11 @@ class _TransactionsListState extends State<TransactionsList> {
         _hasMore) {
       _loadTransactions(loadMore: true);
     }
+  }
+
+  // Public method to refresh transactions (called when withdrawal completes)
+  void refreshTransactions() {
+    _loadTransactions();
   }
 
   @override

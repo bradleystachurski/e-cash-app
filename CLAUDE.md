@@ -89,9 +89,18 @@ The Flutter app will not see Rust changes until both steps are completed.
 
 ## Linting and Formatting
 
-- Dart formatting enforced by pre-commit hook: `scripts/git-hooks/pre-commit.sh`
+**Dart Code Formatting:**
+- **ALWAYS** format Dart files before committing: `dart format lib/*.dart`
+- Pre-commit hook enforces formatting: `scripts/git-hooks/pre-commit.sh`
+- Command to format all modified Dart files: `nix develop --command dart format lib/*.dart`
 - Flutter lints from `package:flutter_lints/flutter.yaml`
-- Rust follows standard rustfmt conventions
+
+**Rust Code:**
+- Follows standard rustfmt conventions
+- Format with: `cargo fmt`
+
+**Pre-commit Hook:**
+The git pre-commit hook will fail if Dart files aren't properly formatted. Always run `dart format lib/*.dart` before committing Dart changes.
 
 ## Build System
 

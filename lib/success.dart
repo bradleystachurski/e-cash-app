@@ -9,6 +9,7 @@ class Success extends StatefulWidget {
   final bool received;
   final BigInt amountMsats;
   final String? txid;
+  final VoidCallback? onCompleted;
 
   const Success({
     super.key,
@@ -16,6 +17,7 @@ class Success extends StatefulWidget {
     required this.received,
     required this.amountMsats,
     this.txid,
+    this.onCompleted,
   });
 
   @override
@@ -40,6 +42,7 @@ class _SuccessState extends State<Success> {
   void _startAutoDismissTimer() {
     _autoDismissTimer = Timer(const Duration(seconds: 4), () {
       if (mounted) {
+        widget.onCompleted?.call();
         Navigator.of(context).popUntil((route) => route.isFirst);
       }
     });
@@ -47,6 +50,7 @@ class _SuccessState extends State<Success> {
 
   void _dismissNow() {
     _autoDismissTimer?.cancel();
+    widget.onCompleted?.call();
     Navigator.of(context).popUntil((route) => route.isFirst);
   }
 

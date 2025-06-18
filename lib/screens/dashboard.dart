@@ -35,6 +35,7 @@ class _DashboardState extends State<Dashboard> {
   late bool recovering;
   PaymentType _selectedPaymentType = PaymentType.lightning;
   VoidCallback? _pendingAction;
+  final GlobalKey _transactionsListKey = GlobalKey();
 
   @override
   void initState() {
@@ -63,6 +64,11 @@ class _DashboardState extends State<Dashboard> {
     });
   }
 
+  void _refreshTransactions() {
+    final state = _transactionsListKey.currentState as dynamic;
+    state?.refreshTransactions();
+  }
+
   void _onSendPressed() async {
     if (_selectedPaymentType == PaymentType.lightning) {
       await showCarbineModalBottomSheet(
@@ -75,8 +81,14 @@ class _DashboardState extends State<Dashboard> {
         context,
         MaterialPageRoute(
           builder:
-              (_) =>
-                  NumberPad(fed: widget.fed, paymentType: _selectedPaymentType),
+              (_) => NumberPad(
+                fed: widget.fed,
+                paymentType: _selectedPaymentType,
+                onWithdrawCompleted:
+                    _selectedPaymentType == PaymentType.onchain
+                        ? _refreshTransactions
+                        : null,
+              ),
         ),
       );
     }
@@ -89,8 +101,11 @@ class _DashboardState extends State<Dashboard> {
         context,
         MaterialPageRoute(
           builder:
-              (_) =>
-                  NumberPad(fed: widget.fed, paymentType: _selectedPaymentType),
+              (_) => NumberPad(
+                fed: widget.fed,
+                paymentType: _selectedPaymentType,
+                onWithdrawCompleted: null,
+              ),
         ),
       );
     } else if (_selectedPaymentType == PaymentType.onchain) {
@@ -187,10 +202,12 @@ class _DashboardState extends State<Dashboard> {
             // entire dashboard
             Expanded(
               child: TransactionsList(
+                key: _transactionsListKey,
                 fed: widget.fed,
                 selectedPaymentType: _selectedPaymentType,
                 recovering: recovering,
                 onClaimed: _loadBalance,
+                onWithdrawCompleted: _refreshTransactions,
               ),
             ),
           ],

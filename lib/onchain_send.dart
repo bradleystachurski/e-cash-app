@@ -9,8 +9,14 @@ import 'package:flutter/services.dart';
 class OnchainSend extends StatefulWidget {
   final FederationSelector fed;
   final BigInt amountSats;
+  final VoidCallback? onWithdrawCompleted;
 
-  const OnchainSend({super.key, required this.fed, required this.amountSats});
+  const OnchainSend({
+    super.key,
+    required this.fed,
+    required this.amountSats,
+    this.onWithdrawCompleted,
+  });
 
   @override
   State<OnchainSend> createState() => _OnchainSendState();
@@ -127,6 +133,7 @@ class _OnchainSendState extends State<OnchainSend> {
                   received: false,
                   amountMsats: widget.amountSats * BigInt.from(1000),
                   txid: txid,
+                  onCompleted: widget.onWithdrawCompleted,
                 ),
           ),
         );

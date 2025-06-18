@@ -17,7 +17,13 @@ import 'package:flutter/services.dart';
 class NumberPad extends StatefulWidget {
   final FederationSelector fed;
   final PaymentType paymentType;
-  const NumberPad({super.key, required this.fed, required this.paymentType});
+  final VoidCallback? onWithdrawCompleted;
+  const NumberPad({
+    super.key,
+    required this.fed,
+    required this.paymentType,
+    this.onWithdrawCompleted,
+  });
 
   @override
   State<NumberPad> createState() => _NumberPadState();
@@ -145,7 +151,11 @@ class _NumberPadState extends State<NumberPad> {
       } else if (widget.paymentType == PaymentType.onchain) {
         showCarbineModalBottomSheet(
           context: context,
-          child: OnchainSend(fed: widget.fed, amountSats: amountSats),
+          child: OnchainSend(
+            fed: widget.fed,
+            amountSats: amountSats,
+            onWithdrawCompleted: widget.onWithdrawCompleted,
+          ),
         );
       }
     }
