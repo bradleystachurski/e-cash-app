@@ -12,6 +12,7 @@ class TransactionsList extends StatefulWidget {
   final bool recovering;
   final VoidCallback onClaimed;
   final VoidCallback? onWithdrawCompleted;
+  final void Function(VoidCallback)? onRefreshRequested;
 
   const TransactionsList({
     super.key,
@@ -20,6 +21,7 @@ class TransactionsList extends StatefulWidget {
     required this.recovering,
     required this.onClaimed,
     this.onWithdrawCompleted,
+    this.onRefreshRequested,
   });
 
   @override
@@ -42,6 +44,9 @@ class _TransactionsListState extends State<TransactionsList> {
     super.initState();
     _scrollController.addListener(_onScroll);
     _setupStreamsAndLoad();
+
+    // Register the refresh callback with the parent
+    widget.onRefreshRequested?.call(_loadTransactions);
   }
 
   void _setupStreamsAndLoad() {
@@ -156,11 +161,6 @@ class _TransactionsListState extends State<TransactionsList> {
         _hasMore) {
       _loadTransactions(loadMore: true);
     }
-  }
-
-  // Public method to refresh transactions (called when withdrawal completes)
-  void refreshTransactions() {
-    _loadTransactions();
   }
 
   @override

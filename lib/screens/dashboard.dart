@@ -35,7 +35,7 @@ class _DashboardState extends State<Dashboard> {
   late bool recovering;
   PaymentType _selectedPaymentType = PaymentType.lightning;
   VoidCallback? _pendingAction;
-  final GlobalKey _transactionsListKey = GlobalKey();
+  VoidCallback? _refreshTransactionsList;
 
   @override
   void initState() {
@@ -65,8 +65,7 @@ class _DashboardState extends State<Dashboard> {
   }
 
   void _refreshTransactions() {
-    final state = _transactionsListKey.currentState as dynamic;
-    state?.refreshTransactions();
+    _refreshTransactionsList?.call();
   }
 
   void _onSendPressed() async {
@@ -202,12 +201,14 @@ class _DashboardState extends State<Dashboard> {
             // entire dashboard
             Expanded(
               child: TransactionsList(
-                key: _transactionsListKey,
                 fed: widget.fed,
                 selectedPaymentType: _selectedPaymentType,
                 recovering: recovering,
                 onClaimed: _loadBalance,
                 onWithdrawCompleted: _refreshTransactions,
+                onRefreshRequested: (refreshCallback) {
+                  _refreshTransactionsList = refreshCallback;
+                },
               ),
             ),
           ],
