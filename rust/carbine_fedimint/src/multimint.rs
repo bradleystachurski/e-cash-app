@@ -72,6 +72,12 @@ pub struct PaymentPreview {
     pub is_lnv2: bool,
 }
 
+#[derive(Clone, PartialEq, Serialize, Debug)]
+pub struct WithdrawFeesResponse {
+    pub fee_amount: u64,
+    pub fee_rate_sats_per_vb: f64,
+}
+
 #[derive(Clone, Eq, PartialEq, Serialize, Debug)]
 pub struct FederationSelector {
     pub federation_name: String,
@@ -1771,7 +1777,7 @@ impl Multimint {
         federation_id: &FederationId,
         address: String,
         amount_sats: u64,
-    ) -> anyhow::Result<u64> {
+    ) -> anyhow::Result<WithdrawFeesResponse> {
         let client = self
             .clients
             .read()
@@ -1787,7 +1793,13 @@ impl Multimint {
         let amount = bitcoin::Amount::from_sat(amount_sats);
 
         let fees = wallet_module.get_withdraw_fees(&address, amount).await?;
-        Ok(fees.amount().to_sat())
+        let fee_amount = fees.amount().to_sat();
+        let fee_rate_sats_per_vb = fees.fee_rate.sats_per_kvb as f64 / 1000.0;
+
+        Ok(WithdrawFeesResponse {
+            fee_amount,
+            fee_rate_sats_per_vb,
+        })
     }
 
     pub async fn withdraw_to_address(

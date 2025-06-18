@@ -27,6 +27,7 @@ class _OnchainSendState extends State<OnchainSend> {
   final TextEditingController _addressController = TextEditingController();
   String? _feeQuote;
   BigInt? _feeAmountSats;
+  double? _feeRateSatsPerVbyte;
   bool _loadingFees = false;
   bool _withdrawing = false;
   DateTime? _quoteExpiry;
@@ -50,6 +51,7 @@ class _OnchainSendState extends State<OnchainSend> {
       setState(() {
         _feeQuote = null;
         _feeAmountSats = null;
+        _feeRateSatsPerVbyte = null;
         _quoteExpiry = null;
       });
       _quoteTimer?.cancel();
@@ -65,15 +67,16 @@ class _OnchainSendState extends State<OnchainSend> {
     setState(() => _loadingFees = true);
 
     try {
-      final fees = await calculateWithdrawFees(
+      final feesResponse = await calculateWithdrawFees(
         federationId: widget.fed.federationId,
         address: _addressController.text.trim(),
         amountSats: widget.amountSats,
       );
 
       setState(() {
-        _feeAmountSats = fees;
-        _feeQuote = 'Fee: $fees sats';
+        _feeAmountSats = BigInt.from(feesResponse.feeAmount.toInt());
+        _feeRateSatsPerVbyte = feesResponse.feeRateSatsPerVb;
+        _feeQuote = 'Fee calculated';
         _quoteExpiry = DateTime.now().add(const Duration(seconds: 60));
       });
 
@@ -109,6 +112,12 @@ class _OnchainSendState extends State<OnchainSend> {
     final remaining = _quoteExpiry!.difference(DateTime.now()).inSeconds;
     if (remaining <= 0) return 'Expired';
     return '${remaining}s remaining';
+  }
+
+  String _formatFeeRate(double? feeRate) {
+    if (feeRate == null) return '';
+    // Format to up to 3 decimal places, removing trailing zeros
+    return '${feeRate.toStringAsFixed(3).replaceAll(RegExp(r'\.?0+$'), '')} sats/vB';
   }
 
   Future<void> _withdraw() async {
@@ -204,6 +213,7 @@ class _OnchainSendState extends State<OnchainSend> {
               // Address input
               TextField(
                 controller: _addressController,
+                style: const TextStyle(fontFamily: 'monospace', fontSize: 14),
                 decoration: InputDecoration(
                   labelText: 'Bitcoin Address',
                   hintText: 'Enter destination address',
@@ -213,8 +223,7 @@ class _OnchainSendState extends State<OnchainSend> {
                     tooltip: 'Paste',
                   ),
                 ),
-                maxLines: 2,
-                minLines: 1,
+                maxLines: 1,
               ),
               const SizedBox(height: 16),
 
@@ -274,6 +283,11 @@ class _OnchainSendState extends State<OnchainSend> {
                           widget.amountSats * BigInt.from(1000),
                           false,
                         ),
+                      ),
+                      buildDetailRow(
+                        Theme.of(context),
+                        'Fee Rate',
+                        _formatFeeRate(_feeRateSatsPerVbyte),
                       ),
                       buildDetailRow(
                         Theme.of(context),

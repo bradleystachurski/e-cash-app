@@ -165,6 +165,9 @@ class _TransactionsListState extends State<TransactionsList> {
 
   @override
   Widget build(BuildContext context) {
+    print('inside build for transactions_list');
+    print('depositMap');
+    print(_depositMap);
     final pending =
         widget.selectedPaymentType == PaymentType.onchain
             ? _depositMap.values.toList()

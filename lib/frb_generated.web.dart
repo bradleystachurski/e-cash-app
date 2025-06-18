@@ -445,6 +445,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   DepositEventKind dco_decode_deposit_event_kind(dynamic raw);
 
   @protected
+  double dco_decode_f_64(dynamic raw);
+
+  @protected
   FederationMeta dco_decode_federation_meta(dynamic raw);
 
   @protected
@@ -569,6 +572,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   Utxo dco_decode_utxo(dynamic raw);
+
+  @protected
+  WithdrawFeesResponse dco_decode_withdraw_fees_response(dynamic raw);
 
   @protected
   AnyhowException sse_decode_AnyhowException(SseDeserializer deserializer);
@@ -934,6 +940,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   DepositEventKind sse_decode_deposit_event_kind(SseDeserializer deserializer);
 
   @protected
+  double sse_decode_f_64(SseDeserializer deserializer);
+
+  @protected
   FederationMeta sse_decode_federation_meta(SseDeserializer deserializer);
 
   @protected
@@ -1062,6 +1071,11 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   Utxo sse_decode_utxo(SseDeserializer deserializer);
+
+  @protected
+  WithdrawFeesResponse sse_decode_withdraw_fees_response(
+    SseDeserializer deserializer,
+  );
 
   @protected
   int sse_decode_i_32(SseDeserializer deserializer);
@@ -1497,6 +1511,9 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
   );
 
   @protected
+  void sse_encode_f_64(double self, SseSerializer serializer);
+
+  @protected
   void sse_encode_federation_meta(
     FederationMeta self,
     SseSerializer serializer,
@@ -1655,6 +1672,12 @@ abstract class RustLibApiImplPlatform extends BaseApiImpl<RustLibWire> {
 
   @protected
   void sse_encode_utxo(Utxo self, SseSerializer serializer);
+
+  @protected
+  void sse_encode_withdraw_fees_response(
+    WithdrawFeesResponse self,
+    SseSerializer serializer,
+  );
 
   @protected
   void sse_encode_i_32(int self, SseSerializer serializer);

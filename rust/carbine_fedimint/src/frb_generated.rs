@@ -6501,6 +6501,13 @@ impl SseDecode for crate::multimint::DepositEventKind {
     }
 }
 
+impl SseDecode for f64 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        deserializer.cursor.read_f64::<NativeEndian>().unwrap()
+    }
+}
+
 impl SseDecode for crate::multimint::FederationMeta {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -6866,6 +6873,18 @@ impl SseDecode for crate::multimint::Utxo {
             txid: var_txid,
             index: var_index,
             amount: var_amount,
+        };
+    }
+}
+
+impl SseDecode for crate::multimint::WithdrawFeesResponse {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        let mut var_feeAmount = <u64>::sse_decode(deserializer);
+        let mut var_feeRateSatsPerVb = <f64>::sse_decode(deserializer);
+        return crate::multimint::WithdrawFeesResponse {
+            fee_amount: var_feeAmount,
+            fee_rate_sats_per_vb: var_feeRateSatsPerVb,
         };
     }
 }
@@ -7836,6 +7855,27 @@ impl flutter_rust_bridge::IntoIntoDart<crate::multimint::Utxo> for crate::multim
         self
     }
 }
+// Codec=Dco (DartCObject based), see doc to use other codecs
+impl flutter_rust_bridge::IntoDart for crate::multimint::WithdrawFeesResponse {
+    fn into_dart(self) -> flutter_rust_bridge::for_generated::DartAbi {
+        [
+            self.fee_amount.into_into_dart().into_dart(),
+            self.fee_rate_sats_per_vb.into_into_dart().into_dart(),
+        ]
+        .into_dart()
+    }
+}
+impl flutter_rust_bridge::for_generated::IntoDartExceptPrimitive
+    for crate::multimint::WithdrawFeesResponse
+{
+}
+impl flutter_rust_bridge::IntoIntoDart<crate::multimint::WithdrawFeesResponse>
+    for crate::multimint::WithdrawFeesResponse
+{
+    fn into_into_dart(self) -> crate::multimint::WithdrawFeesResponse {
+        self
+    }
+}
 
 impl SseEncode for flutter_rust_bridge::for_generated::anyhow::Error {
     // Codec=Sse (Serialization based), see doc to use other codecs
@@ -8277,6 +8317,13 @@ impl SseEncode for crate::multimint::DepositEventKind {
     }
 }
 
+impl SseEncode for f64 {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        serializer.cursor.write_f64::<NativeEndian>(self).unwrap();
+    }
+}
+
 impl SseEncode for crate::multimint::FederationMeta {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -8577,6 +8624,14 @@ impl SseEncode for crate::multimint::Utxo {
         <String>::sse_encode(self.txid, serializer);
         <u32>::sse_encode(self.index, serializer);
         <u64>::sse_encode(self.amount, serializer);
+    }
+}
+
+impl SseEncode for crate::multimint::WithdrawFeesResponse {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <u64>::sse_encode(self.fee_amount, serializer);
+        <f64>::sse_encode(self.fee_rate_sats_per_vb, serializer);
     }
 }
 

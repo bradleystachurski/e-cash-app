@@ -91,8 +91,10 @@ just run
 
 **Dart Code Formatting:**
 - **ALWAYS** format Dart files before committing: `dart format lib/*.dart`
+- **ALWAYS** run analysis after Dart changes: `flutter analyze`
 - Pre-commit hook enforces formatting: `scripts/git-hooks/pre-commit.sh`
 - Command to format all modified Dart files: `nix develop --command dart format lib/*.dart`
+- Command to check for analysis errors: `nix develop --command flutter analyze`
 - Flutter lints from `package:flutter_lints/flutter.yaml`
 
 **Rust Code:**
@@ -100,7 +102,7 @@ just run
 - Format with: `cargo fmt`
 
 **Pre-commit Hook:**
-The git pre-commit hook will fail if Dart files aren't properly formatted. Always run `dart format lib/*.dart` before committing Dart changes.
+The git pre-commit hook will fail if Dart files aren't properly formatted. Always run `dart format lib/*.dart` and `flutter analyze` before committing Dart changes to ensure code quality and catch type errors.
 
 ## Build System
 

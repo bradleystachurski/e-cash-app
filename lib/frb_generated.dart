@@ -217,7 +217,7 @@ abstract class RustLibApi extends BaseApi {
     required FederationId federationId,
   });
 
-  Future<BigInt> crateMultimintMultimintCalculateWithdrawFees({
+  Future<WithdrawFeesResponse> crateMultimintMultimintCalculateWithdrawFees({
     required Multimint that,
     required FederationId federationId,
     required String address,
@@ -464,7 +464,7 @@ abstract class RustLibApi extends BaseApi {
 
   Future<BigInt> crateBalance({required FederationId federationId});
 
-  Future<BigInt> crateCalculateWithdrawFees({
+  Future<WithdrawFeesResponse> crateCalculateWithdrawFees({
     required FederationId federationId,
     required String address,
     required BigInt amountSats,
@@ -1859,7 +1859,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
-  Future<BigInt> crateMultimintMultimintCalculateWithdrawFees({
+  Future<WithdrawFeesResponse> crateMultimintMultimintCalculateWithdrawFees({
     required Multimint that,
     required FederationId federationId,
     required String address,
@@ -1887,7 +1887,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           );
         },
         codec: SseCodec(
-          decodeSuccessData: sse_decode_u_64,
+          decodeSuccessData: sse_decode_withdraw_fees_response,
           decodeErrorData: sse_decode_AnyhowException,
         ),
         constMeta: kCrateMultimintMultimintCalculateWithdrawFeesConstMeta,
@@ -3784,7 +3784,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "balance", argNames: ["federationId"]);
 
   @override
-  Future<BigInt> crateCalculateWithdrawFees({
+  Future<WithdrawFeesResponse> crateCalculateWithdrawFees({
     required FederationId federationId,
     required String address,
     required BigInt amountSats,
@@ -3807,7 +3807,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           );
         },
         codec: SseCodec(
-          decodeSuccessData: sse_decode_u_64,
+          decodeSuccessData: sse_decode_withdraw_fees_response,
           decodeErrorData: sse_decode_AnyhowException,
         ),
         constMeta: kCrateCalculateWithdrawFeesConstMeta,
@@ -5582,6 +5582,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  double dco_decode_f_64(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as double;
+  }
+
+  @protected
   FederationMeta dco_decode_federation_meta(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
@@ -5953,6 +5959,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       txid: dco_decode_String(arr[0]),
       index: dco_decode_u_32(arr[1]),
       amount: dco_decode_u_64(arr[2]),
+    );
+  }
+
+  @protected
+  WithdrawFeesResponse dco_decode_withdraw_fees_response(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    final arr = raw as List<dynamic>;
+    if (arr.length != 2)
+      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    return WithdrawFeesResponse(
+      feeAmount: dco_decode_u_64(arr[0]),
+      feeRateSatsPerVb: dco_decode_f_64(arr[1]),
     );
   }
 
@@ -6702,6 +6720,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  double sse_decode_f_64(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getFloat64();
+  }
+
+  @protected
   FederationMeta sse_decode_federation_meta(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_picture = sse_decode_opt_String(deserializer);
@@ -7100,6 +7124,19 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_index = sse_decode_u_32(deserializer);
     var var_amount = sse_decode_u_64(deserializer);
     return Utxo(txid: var_txid, index: var_index, amount: var_amount);
+  }
+
+  @protected
+  WithdrawFeesResponse sse_decode_withdraw_fees_response(
+    SseDeserializer deserializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    var var_feeAmount = sse_decode_u_64(deserializer);
+    var var_feeRateSatsPerVb = sse_decode_f_64(deserializer);
+    return WithdrawFeesResponse(
+      feeAmount: var_feeAmount,
+      feeRateSatsPerVb: var_feeRateSatsPerVb,
+    );
   }
 
   @protected
@@ -7914,6 +7951,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_f_64(double self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putFloat64(self);
+  }
+
+  @protected
   void sse_encode_federation_meta(
     FederationMeta self,
     SseSerializer serializer,
@@ -8272,6 +8315,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.txid, serializer);
     sse_encode_u_32(self.index, serializer);
     sse_encode_u_64(self.amount, serializer);
+  }
+
+  @protected
+  void sse_encode_withdraw_fees_response(
+    WithdrawFeesResponse self,
+    SseSerializer serializer,
+  ) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_u_64(self.feeAmount, serializer);
+    sse_encode_f_64(self.feeRateSatsPerVb, serializer);
   }
 
   @protected
@@ -8734,7 +8787,7 @@ class MultimintImpl extends RustOpaque implements Multimint {
       .api
       .crateMultimintMultimintBalance(that: this, federationId: federationId);
 
-  Future<BigInt> calculateWithdrawFees({
+  Future<WithdrawFeesResponse> calculateWithdrawFees({
     required FederationId federationId,
     required String address,
     required BigInt amountSats,

@@ -11,7 +11,7 @@ use fedimint_core::config::ClientConfig;
 use flutter_rust_bridge::frb;
 use multimint::{
     FederationMeta, FederationSelector, Multimint, MultimintCreation, PaymentPreview, Transaction,
-    Utxo,
+    Utxo, WithdrawFeesResponse,
 };
 use nostr::{NWCConnectionInfo, NostrClient, PublicFederation};
 use tokio::sync::{OnceCell, RwLock};
@@ -465,7 +465,7 @@ pub async fn calculate_withdraw_fees(
     federation_id: &FederationId,
     address: String,
     amount_sats: u64,
-) -> anyhow::Result<u64> {
+) -> anyhow::Result<WithdrawFeesResponse> {
     let multimint = get_multimint().await;
     multimint
         .calculate_withdraw_fees(federation_id, address, amount_sats)

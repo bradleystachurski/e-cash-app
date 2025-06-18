@@ -214,7 +214,7 @@ Future<List<String>> getRelays() => RustLib.instance.api.crateGetRelays();
 Future<List<Utxo>> walletSummary({required String invite}) =>
     RustLib.instance.api.crateWalletSummary(invite: invite);
 
-Future<BigInt> calculateWithdrawFees({
+Future<WithdrawFeesResponse> calculateWithdrawFees({
   required FederationId federationId,
   required String address,
   required BigInt amountSats,
