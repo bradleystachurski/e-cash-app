@@ -59,6 +59,9 @@ class _OnchainSendState extends State<OnchainSend> {
   Future<void> _calculateFees() async {
     if (_addressController.text.isEmpty) return;
 
+    // Cancel existing timer if recalculating
+    _quoteTimer?.cancel();
+
     setState(() => _loadingFees = true);
 
     try {
@@ -318,15 +321,24 @@ class _OnchainSendState extends State<OnchainSend> {
                   children: [
                     Expanded(
                       child: TextButton(
-                        onPressed: () {
-                          setState(() {
-                            _feeQuote = null;
-                            _feeAmountSats = null;
-                            _quoteExpiry = null;
-                          });
-                          _quoteTimer?.cancel();
-                        },
-                        child: const Text('Recalculate'),
+                        onPressed: _loadingFees ? null : _calculateFees,
+                        child:
+                            _loadingFees
+                                ? const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    SizedBox(
+                                      width: 14,
+                                      height: 14,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    ),
+                                    SizedBox(width: 6),
+                                    Text('Updating...'),
+                                  ],
+                                )
+                                : const Text('Recalculate'),
                       ),
                     ),
                     const SizedBox(width: 8),
