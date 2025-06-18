@@ -9,7 +9,6 @@ import 'package:carbine/number_pad.dart';
 import 'package:carbine/payment_selector.dart';
 import 'package:carbine/onchain_receive.dart';
 import 'package:carbine/scan.dart';
-import 'package:carbine/refund.dart';
 import 'package:carbine/theme.dart';
 import 'package:carbine/models.dart';
 
@@ -121,20 +120,6 @@ class _DashboardState extends State<Dashboard> {
     _loadBalance();
   }
 
-  void _onRefundPressed() async {
-    await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder:
-            (_) => RefundConfirmationPage(
-              fed: widget.fed,
-              balanceMsats: balanceMsats!,
-            ),
-      ),
-    );
-    _loadBalance();
-  }
-
   @override
   Widget build(BuildContext context) {
     final name = widget.fed.federationName;
@@ -171,13 +156,6 @@ class _DashboardState extends State<Dashboard> {
                       backgroundColor: Colors.blue,
                       onTap: () => _scheduleAction(_onSendPressed),
                     ),
-                    if (_selectedPaymentType == PaymentType.onchain)
-                      SpeedDialChild(
-                        child: const Icon(Icons.reply),
-                        label: 'Refund',
-                        backgroundColor: Colors.orange,
-                        onTap: () => _scheduleAction(_onRefundPressed),
-                      ),
                   ],
                 ],
               ),

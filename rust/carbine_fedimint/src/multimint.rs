@@ -1765,62 +1765,6 @@ impl Multimint {
         Ok(final_state)
     }
 
-    /// Refund the full balance on-chain to the Mutinynet faucet.
-    ///
-    /// This is a temporary method that assists with development and should
-    /// be removed before supporting mainnet.
-    pub async fn refund(&self, federation_id: &FederationId) -> anyhow::Result<(String, u64)> {
-        // hardcoded address for the Mutinynet faucet
-        // https://faucet.mutinynet.com/
-        let address =
-            bitcoin::address::Address::from_str("tb1qd28npep0s8frcm3y7dxqajkcy2m40eysplyr9v")?;
-
-        let client = self
-            .clients
-            .read()
-            .await
-            .get(federation_id)
-            .expect("No federation exists")
-            .clone();
-        let wallet_module =
-            client.get_first_module::<fedimint_wallet_client::WalletClientModule>()?;
-
-        let address = address.require_network(wallet_module.get_network())?;
-        let balance = bitcoin::Amount::from_sat(client.get_balance().await.msats / 1000);
-        let fees = wallet_module.get_withdraw_fees(&address, balance).await?;
-        let absolute_fees = fees.amount();
-        let amount = balance
-            .checked_sub(fees.amount())
-            .context("Not enough funds to pay fees")?;
-
-        let operation_id = wallet_module.withdraw(&address, amount, fees, ()).await?;
-
-        let mut updates = wallet_module
-            .subscribe_withdraw_updates(operation_id)
-            .await?
-            .into_stream();
-
-        let (txid, fees_sat) = loop {
-            let update = updates
-                .next()
-                .await
-                .ok_or_else(|| anyhow!("Update stream ended without outcome"))?;
-
-            match update {
-                WithdrawState::Succeeded(txid) => {
-                    break (txid.consensus_encode_to_hex(), absolute_fees.to_sat());
-                }
-                WithdrawState::Failed(e) => {
-                    bail!("Withdraw failed: {e}");
-                }
-                WithdrawState::Created => {
-                    continue;
-                }
-            }
-        };
-
-        Ok((txid, fees_sat))
-    }
 
     pub async fn calculate_withdraw_fees(
         &self,

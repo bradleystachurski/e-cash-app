@@ -34,11 +34,11 @@ just run
 - `dart format lib/*.dart` - Format Dart code (required by pre-commit hook)
 
 ### Important: After Rust Changes
-**CRITICAL**: After making changes to Rust code (`rust/carbine_fedimint/src/`), you MUST run:
-1. `just generate` - Regenerate Flutter bindings
-2. `just build-linux` - Rebuild the Rust library
+**CRITICAL**: After making changes to Rust code (`rust/carbine_fedimint/src/`), you MUST run these commands in order:
+1. `just generate` - Regenerate Flutter bindings  
+2. `just build-linux` - Rebuild the Rust library for Linux
 
-The Flutter app will not see Rust changes until both steps are completed.
+**ALWAYS run `just build-linux` after any Rust changes** - this ensures the compiled Rust library is updated. The Flutter app will not see Rust changes until both steps are completed.
 
 ### Testing
 - `flutter test` - Run Flutter/Dart tests
