@@ -1582,18 +1582,23 @@ impl Multimint {
                                 }
                             }
                             WalletOperationMetaVariant::Withdraw { amount, .. } => {
-                                // Show all withdrawal operations - they exist in the log because
-                                // they were initiated by the user and should be visible in transaction history
-                                Some(Transaction {
-                                    received: false,
-                                    amount: Amount::from_sats(amount.to_sat()).msats,
-                                    module: "wallet".to_string(),
-                                    timestamp,
-                                    operation_id: key.operation_id.0.to_vec(),
-                                })
+                                let outcome = op_log_val.outcome::<WithdrawState>();
+                                if let Some(WithdrawState::Succeeded(txid)) = outcome {
+                                    println!("found successful withdrawal with txid {txid}");
+                                    Some(Transaction {
+                                        received: false,
+                                        amount: Amount::from_sats(amount.to_sat()).msats,
+                                        module: "wallet".to_string(),
+                                        timestamp,
+                                        operation_id: key.operation_id.0.to_vec(),
+                                    })
+                                } else {
+                                    None
+                                }
                             }
                             WalletOperationMetaVariant::RbfWithdraw { .. } => {
                                 // RbfWithdraw doesn't have amount field, skip for now
+                                // No RbfWithdrawal support
                                 None
                             }
                         }
@@ -1788,7 +1793,6 @@ impl Multimint {
             .checked_sub(fees.amount())
             .context("Not enough funds to pay fees")?;
 
-
         let operation_id = wallet_module.withdraw(&address, amount, fees, ()).await?;
 
         let mut updates = wallet_module
@@ -1801,7 +1805,6 @@ impl Multimint {
                 .next()
                 .await
                 .ok_or_else(|| anyhow!("Update stream ended without outcome"))?;
-
 
             match update {
                 WithdrawState::Succeeded(txid) => {
@@ -1896,6 +1899,8 @@ impl Multimint {
 
             match update {
                 WithdrawState::Succeeded(txid) => {
+                    // drive the update stream to completion so we get an outcome
+                    while updates.next().await.is_some() {}
                     break txid.consensus_encode_to_hex();
                 }
                 WithdrawState::Failed(e) => {
