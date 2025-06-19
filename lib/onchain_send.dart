@@ -28,6 +28,7 @@ class _OnchainSendState extends State<OnchainSend> {
   String? _feeQuote;
   BigInt? _feeAmountSats;
   double? _feeRateSatsPerVbyte;
+  int? _txSizeVbytes;
   bool _loadingFees = false;
   bool _withdrawing = false;
   DateTime? _quoteExpiry;
@@ -52,6 +53,7 @@ class _OnchainSendState extends State<OnchainSend> {
         _feeQuote = null;
         _feeAmountSats = null;
         _feeRateSatsPerVbyte = null;
+        _txSizeVbytes = null;
         _quoteExpiry = null;
       });
       _quoteTimer?.cancel();
@@ -76,6 +78,7 @@ class _OnchainSendState extends State<OnchainSend> {
       setState(() {
         _feeAmountSats = BigInt.from(feesResponse.feeAmount.toInt());
         _feeRateSatsPerVbyte = feesResponse.feeRateSatsPerVb;
+        _txSizeVbytes = feesResponse.txSizeVbytes;
         _feeQuote = 'Fee calculated';
         _quoteExpiry = DateTime.now().add(const Duration(seconds: 60));
       });
@@ -98,6 +101,8 @@ class _OnchainSendState extends State<OnchainSend> {
         setState(() {
           _feeQuote = null;
           _feeAmountSats = null;
+          _feeRateSatsPerVbyte = null;
+          _txSizeVbytes = null;
           _quoteExpiry = null;
         });
         timer.cancel();
@@ -288,6 +293,11 @@ class _OnchainSendState extends State<OnchainSend> {
                         Theme.of(context),
                         'Fee Rate',
                         _formatFeeRate(_feeRateSatsPerVbyte),
+                      ),
+                      buildDetailRow(
+                        Theme.of(context),
+                        'Tx Size',
+                        '${_txSizeVbytes ?? 0} vB',
                       ),
                       buildDetailRow(
                         Theme.of(context),

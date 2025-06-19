@@ -450,14 +450,17 @@ class Utxo {
 class WithdrawFeesResponse {
   final BigInt feeAmount;
   final double feeRateSatsPerVb;
+  final int txSizeVbytes;
 
   const WithdrawFeesResponse({
     required this.feeAmount,
     required this.feeRateSatsPerVb,
+    required this.txSizeVbytes,
   });
 
   @override
-  int get hashCode => feeAmount.hashCode ^ feeRateSatsPerVb.hashCode;
+  int get hashCode =>
+      feeAmount.hashCode ^ feeRateSatsPerVb.hashCode ^ txSizeVbytes.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -465,5 +468,6 @@ class WithdrawFeesResponse {
       other is WithdrawFeesResponse &&
           runtimeType == other.runtimeType &&
           feeAmount == other.feeAmount &&
-          feeRateSatsPerVb == other.feeRateSatsPerVb;
+          feeRateSatsPerVb == other.feeRateSatsPerVb &&
+          txSizeVbytes == other.txSizeVbytes;
 }

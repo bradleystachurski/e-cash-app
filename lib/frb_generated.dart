@@ -5966,11 +5966,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   WithdrawFeesResponse dco_decode_withdraw_fees_response(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 2)
-      throw Exception('unexpected arr length: expect 2 but see ${arr.length}');
+    if (arr.length != 3)
+      throw Exception('unexpected arr length: expect 3 but see ${arr.length}');
     return WithdrawFeesResponse(
       feeAmount: dco_decode_u_64(arr[0]),
       feeRateSatsPerVb: dco_decode_f_64(arr[1]),
+      txSizeVbytes: dco_decode_u_32(arr[2]),
     );
   }
 
@@ -7133,9 +7134,11 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     var var_feeAmount = sse_decode_u_64(deserializer);
     var var_feeRateSatsPerVb = sse_decode_f_64(deserializer);
+    var var_txSizeVbytes = sse_decode_u_32(deserializer);
     return WithdrawFeesResponse(
       feeAmount: var_feeAmount,
       feeRateSatsPerVb: var_feeRateSatsPerVb,
+      txSizeVbytes: var_txSizeVbytes,
     );
   }
 
@@ -8325,6 +8328,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     // Codec=Sse (Serialization based), see doc to use other codecs
     sse_encode_u_64(self.feeAmount, serializer);
     sse_encode_f_64(self.feeRateSatsPerVb, serializer);
+    sse_encode_u_32(self.txSizeVbytes, serializer);
   }
 
   @protected

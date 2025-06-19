@@ -76,6 +76,7 @@ pub struct PaymentPreview {
 pub struct WithdrawFeesResponse {
     pub fee_amount: u64,
     pub fee_rate_sats_per_vb: f64,
+    pub tx_size_vbytes: u32,
 }
 
 #[derive(Clone, Eq, PartialEq, Serialize, Debug)]
@@ -1795,10 +1796,12 @@ impl Multimint {
         let fees = wallet_module.get_withdraw_fees(&address, amount).await?;
         let fee_amount = fees.amount().to_sat();
         let fee_rate_sats_per_vb = fees.fee_rate.sats_per_kvb as f64 / 1000.0;
+        let tx_size_vbytes = ((fees.total_weight + 3) / 4) as u32;
 
         Ok(WithdrawFeesResponse {
             fee_amount,
             fee_rate_sats_per_vb,
+            tx_size_vbytes,
         })
     }
 

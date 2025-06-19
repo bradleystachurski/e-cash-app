@@ -6882,9 +6882,11 @@ impl SseDecode for crate::multimint::WithdrawFeesResponse {
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
         let mut var_feeAmount = <u64>::sse_decode(deserializer);
         let mut var_feeRateSatsPerVb = <f64>::sse_decode(deserializer);
+        let mut var_txSizeVbytes = <u32>::sse_decode(deserializer);
         return crate::multimint::WithdrawFeesResponse {
             fee_amount: var_feeAmount,
             fee_rate_sats_per_vb: var_feeRateSatsPerVb,
+            tx_size_vbytes: var_txSizeVbytes,
         };
     }
 }
@@ -7861,6 +7863,7 @@ impl flutter_rust_bridge::IntoDart for crate::multimint::WithdrawFeesResponse {
         [
             self.fee_amount.into_into_dart().into_dart(),
             self.fee_rate_sats_per_vb.into_into_dart().into_dart(),
+            self.tx_size_vbytes.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -8632,6 +8635,7 @@ impl SseEncode for crate::multimint::WithdrawFeesResponse {
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
         <u64>::sse_encode(self.fee_amount, serializer);
         <f64>::sse_encode(self.fee_rate_sats_per_vb, serializer);
+        <u32>::sse_encode(self.tx_size_vbytes, serializer);
     }
 }
 
