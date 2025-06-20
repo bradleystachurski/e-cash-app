@@ -285,6 +285,12 @@ class _NumberPadState extends State<NumberPad> {
                         widget.paymentType == PaymentType.onchain
                             ? TextButton(
                               onPressed: _loadingMax ? null : _onMaxPressed,
+                              style: TextButton.styleFrom(
+                                minimumSize: const Size(50, 40),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                ),
+                              ),
                               child:
                                   _loadingMax
                                       ? const SizedBox(
@@ -298,9 +304,11 @@ class _NumberPadState extends State<NumberPad> {
                                       : const Text(
                                         'MAX',
                                         style: TextStyle(
-                                          fontSize: 16,
+                                          fontSize: 14,
                                           fontWeight: FontWeight.bold,
                                         ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.clip,
                                       ),
                             )
                             : null,
