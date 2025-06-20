@@ -283,9 +283,9 @@ class _NumberPadState extends State<NumberPad> {
                     ),
                     leftWidget:
                         widget.paymentType == PaymentType.onchain
-                            ? IconButton(
+                            ? TextButton(
                               onPressed: _loadingMax ? null : _onMaxPressed,
-                              icon:
+                              child:
                                   _loadingMax
                                       ? const SizedBox(
                                         width: 16,
@@ -295,10 +295,13 @@ class _NumberPadState extends State<NumberPad> {
                                           color: Colors.grey,
                                         ),
                                       )
-                                      : const Icon(
-                                        Icons.account_balance_wallet,
+                                      : const Text(
+                                        'MAX',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
-                              tooltip: 'Max',
                             )
                             : null,
                     rightWidget: IconButton(
