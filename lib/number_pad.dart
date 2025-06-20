@@ -288,7 +288,7 @@ class _NumberPadState extends State<NumberPad> {
                               style: TextButton.styleFrom(
                                 minimumSize: const Size(50, 40),
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
+                                  horizontal: 2,
                                 ),
                               ),
                               child:
