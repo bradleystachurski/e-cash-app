@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:carbine/lib.dart';
 import 'package:carbine/multimint.dart';
+import 'package:carbine/number_pad.dart';
 import 'package:carbine/success.dart';
 import 'package:carbine/theme.dart';
 import 'package:carbine/utils.dart';
@@ -10,12 +11,14 @@ import 'package:flutter/services.dart';
 class OnchainSend extends StatefulWidget {
   final FederationSelector fed;
   final BigInt amountSats;
+  final WithdrawalMode withdrawalMode;
   final VoidCallback? onWithdrawCompleted;
 
   const OnchainSend({
     super.key,
     required this.fed,
     required this.amountSats,
+    required this.withdrawalMode,
     this.onWithdrawCompleted,
   });
 
@@ -29,6 +32,7 @@ class _OnchainSendState extends State<OnchainSend> {
   BigInt? _feeAmountSats;
   double? _feeRateSatsPerVbyte;
   int? _txSizeVbytes;
+  BigInt? _actualWithdrawalAmount;
   bool _loadingFees = false;
   bool _withdrawing = false;
   DateTime? _quoteExpiry;
@@ -54,6 +58,7 @@ class _OnchainSendState extends State<OnchainSend> {
         _feeAmountSats = null;
         _feeRateSatsPerVbyte = null;
         _txSizeVbytes = null;
+        _actualWithdrawalAmount = null;
         _quoteExpiry = null;
       });
       _quoteTimer?.cancel();
@@ -69,19 +74,45 @@ class _OnchainSendState extends State<OnchainSend> {
     setState(() => _loadingFees = true);
 
     try {
-      final feesResponse = await calculateWithdrawFees(
-        federationId: widget.fed.federationId,
-        address: _addressController.text.trim(),
-        amountSats: widget.amountSats,
-      );
+      if (widget.withdrawalMode == WithdrawalMode.maxBalance) {
+        // Calculate max withdrawable for the specific address
+        final maxAmount = await getMaxWithdrawableAmount(
+          federationId: widget.fed.federationId,
+          address: _addressController.text.trim(),
+        );
 
-      setState(() {
-        _feeAmountSats = BigInt.from(feesResponse.feeAmount.toInt());
-        _feeRateSatsPerVbyte = feesResponse.feeRateSatsPerVb;
-        _txSizeVbytes = feesResponse.txSizeVbytes;
-        _feeQuote = 'Fee calculated';
-        _quoteExpiry = DateTime.now().add(const Duration(seconds: 60));
-      });
+        // Calculate fees for this max amount
+        final feesResponse = await calculateWithdrawFees(
+          federationId: widget.fed.federationId,
+          address: _addressController.text.trim(),
+          amountSats: maxAmount,
+        );
+
+        setState(() {
+          _actualWithdrawalAmount = maxAmount;
+          _feeAmountSats = BigInt.from(feesResponse.feeAmount.toInt());
+          _feeRateSatsPerVbyte = feesResponse.feeRateSatsPerVb;
+          _txSizeVbytes = feesResponse.txSizeVbytes;
+          _feeQuote = 'Fee calculated';
+          _quoteExpiry = DateTime.now().add(const Duration(seconds: 60));
+        });
+      } else {
+        // Normal specific amount calculation
+        final feesResponse = await calculateWithdrawFees(
+          federationId: widget.fed.federationId,
+          address: _addressController.text.trim(),
+          amountSats: widget.amountSats,
+        );
+
+        setState(() {
+          _actualWithdrawalAmount = widget.amountSats;
+          _feeAmountSats = BigInt.from(feesResponse.feeAmount.toInt());
+          _feeRateSatsPerVbyte = feesResponse.feeRateSatsPerVb;
+          _txSizeVbytes = feesResponse.txSizeVbytes;
+          _feeQuote = 'Fee calculated';
+          _quoteExpiry = DateTime.now().add(const Duration(seconds: 60));
+        });
+      }
 
       _startQuoteTimer();
     } catch (e) {
@@ -103,6 +134,7 @@ class _OnchainSendState extends State<OnchainSend> {
           _feeAmountSats = null;
           _feeRateSatsPerVbyte = null;
           _txSizeVbytes = null;
+          _actualWithdrawalAmount = null;
           _quoteExpiry = null;
         });
         timer.cancel();
@@ -126,7 +158,10 @@ class _OnchainSendState extends State<OnchainSend> {
   }
 
   Future<void> _withdraw() async {
-    if (_addressController.text.isEmpty || _feeAmountSats == null) return;
+    if (_addressController.text.isEmpty ||
+        _feeAmountSats == null ||
+        _actualWithdrawalAmount == null)
+      return;
 
     setState(() => _withdrawing = true);
 
@@ -134,7 +169,7 @@ class _OnchainSendState extends State<OnchainSend> {
       final operationId = await withdrawToAddress(
         federationId: widget.fed.federationId,
         address: _addressController.text.trim(),
-        amountSats: widget.amountSats,
+        amountSats: _actualWithdrawalAmount!,
       );
 
       final txid = await awaitWithdraw(
@@ -149,7 +184,9 @@ class _OnchainSendState extends State<OnchainSend> {
                 (context) => Success(
                   lightning: false,
                   received: false,
-                  amountMsats: widget.amountSats * BigInt.from(1000),
+                  amountMsats:
+                      (_actualWithdrawalAmount ?? widget.amountSats) *
+                      BigInt.from(1000),
                   txid: txid,
                   onCompleted: widget.onWithdrawCompleted,
                 ),
@@ -181,6 +218,7 @@ class _OnchainSendState extends State<OnchainSend> {
   Widget build(BuildContext context) {
     final canWithdraw =
         _feeQuote != null &&
+        _actualWithdrawalAmount != null &&
         _quoteExpiry != null &&
         DateTime.now().isBefore(_quoteExpiry!) &&
         !_withdrawing;
@@ -283,9 +321,11 @@ class _OnchainSendState extends State<OnchainSend> {
                     children: [
                       buildDetailRow(
                         Theme.of(context),
-                        'Amount',
+                        widget.withdrawalMode == WithdrawalMode.maxBalance
+                            ? 'Max Withdrawal'
+                            : 'Amount',
                         formatBalance(
-                          widget.amountSats * BigInt.from(1000),
+                          _actualWithdrawalAmount! * BigInt.from(1000),
                           false,
                         ),
                       ),
@@ -311,7 +351,7 @@ class _OnchainSendState extends State<OnchainSend> {
                         Theme.of(context),
                         'Total',
                         formatBalance(
-                          (widget.amountSats + _feeAmountSats!) *
+                          (_actualWithdrawalAmount! + _feeAmountSats!) *
                               BigInt.from(1000),
                           false,
                         ),

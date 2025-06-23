@@ -395,7 +395,7 @@ impl Multimint {
                         bitcoin::Network::Signet => "https://mutinynet.com/api".to_string(),
                         bitcoin::Network::Regtest => {
                             // referencing devimint, uncomment for regtest
-                            "http://localhost:22347".to_string()
+                            "http://localhost:22380".to_string()
                             // panic!("Regtest requires manually setting the connection params")
                         }
                         network => {
@@ -1771,7 +1771,6 @@ impl Multimint {
 
         Ok(final_state)
     }
-
 
     pub async fn calculate_withdraw_fees(
         &self,

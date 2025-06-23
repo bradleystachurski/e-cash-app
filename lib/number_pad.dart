@@ -14,6 +14,11 @@ import 'package:intl/intl.dart';
 import 'package:numpad_layout/widgets/numpad.dart';
 import 'package:flutter/services.dart';
 
+enum WithdrawalMode {
+  specificAmount, // User entered exact amount
+  maxBalance, // User clicked MAX button
+}
+
 class NumberPad extends StatefulWidget {
   final FederationSelector fed;
   final PaymentType paymentType;
@@ -36,6 +41,7 @@ class _NumberPadState extends State<NumberPad> {
   bool _creating = false;
   double? _btcPriceUsd;
   bool _loadingMax = false;
+  WithdrawalMode _withdrawalMode = WithdrawalMode.specificAmount;
 
   @override
   void initState() {
@@ -91,21 +97,19 @@ class _NumberPadState extends State<NumberPad> {
     setState(() => _loadingMax = true);
 
     try {
-      // For now, use a default address to calculate max withdrawable
-      // In a real implementation, we'd need to get the destination address first
-      const defaultAddress = 'bcrt1q4jut40wr03x8hpf0gkhgpuj6tqc22p8s8xscuh';
-      final maxAmount = await getMaxWithdrawableAmount(
-        federationId: widget.fed.federationId,
-        address: defaultAddress,
-      );
+      final balanceMsats = await balance(federationId: widget.fed.federationId);
+      final balanceSats =
+          balanceMsats ~/ BigInt.from(1000); // Convert msats to sats
+
       setState(() {
-        _rawAmount = maxAmount.toString();
+        _rawAmount = balanceSats.toString();
+        _withdrawalMode = WithdrawalMode.maxBalance;
       });
     } catch (e) {
-      AppLogger.instance.error('Failed to get max withdrawable amount: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to calculate max amount')),
-      );
+      AppLogger.instance.error('Failed to get balance: $e');
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Failed to get balance')));
     } finally {
       setState(() => _loadingMax = false);
     }
@@ -154,6 +158,7 @@ class _NumberPadState extends State<NumberPad> {
           child: OnchainSend(
             fed: widget.fed,
             amountSats: amountSats,
+            withdrawalMode: _withdrawalMode,
             onWithdrawCompleted: widget.onWithdrawCompleted,
           ),
         );
@@ -218,11 +223,15 @@ class _NumberPadState extends State<NumberPad> {
         setState(() {
           if (_rawAmount.isNotEmpty) {
             _rawAmount = _rawAmount.substring(0, _rawAmount.length - 1);
+            _withdrawalMode = WithdrawalMode.specificAmount;
           }
         });
       }
       if (digit != '') {
-        setState(() => _rawAmount += digit);
+        setState(() {
+          _rawAmount += digit;
+          _withdrawalMode = WithdrawalMode.specificAmount;
+        });
       }
     }
   }
@@ -275,6 +284,7 @@ class _NumberPadState extends State<NumberPad> {
                     onType: (value) {
                       setState(() {
                         _rawAmount += value.toString();
+                        _withdrawalMode = WithdrawalMode.specificAmount;
                       });
                     },
                     numberStyle: const TextStyle(
@@ -320,6 +330,7 @@ class _NumberPadState extends State<NumberPad> {
                               0,
                               _rawAmount.length - 1,
                             );
+                            _withdrawalMode = WithdrawalMode.specificAmount;
                           }
                         });
                       },
