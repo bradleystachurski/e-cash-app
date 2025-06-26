@@ -1,0 +1,49 @@
+# Fedimint App Development Todo
+
+## Project Context
+This is a Fedimint wallet app built with Flutter frontend and Rust backend. The app supports Lightning, on-chain, and e-cash payments. We're currently enhancing the transaction history UI to show detailed information in clickable modals.
+
+## NOW (Currently Working On)
+- Planning next transaction detail modal enhancements
+
+## TODO (Ranked by Priority)
+
+### High Priority
+1. Add payment-specific details to transaction modal:
+   - Lightning: payment hash, invoice, gateway info
+   - On-chain: transaction hash, block height, confirmations
+   - E-cash: token info, notes count
+2. Enhance modal with more transaction metadata from operation log
+3. Add transaction status indicators (pending, confirmed, failed)
+
+### Medium Priority
+4. Add search/filter functionality to transaction history
+5. Add transaction export functionality
+6. Improve transaction loading performance with better pagination
+7. Add transaction grouping by date/type
+
+### Low Priority
+8. Add transaction sharing functionality
+9. Add transaction notes/labels feature
+10. Add dark mode optimizations for transaction UI
+
+## DONE
+✅ Created basic TransactionDetailModal widget with common transaction info
+✅ Made TransactionItem rows clickable to show modal
+✅ Added operation ID copy functionality with toast notification
+✅ Integrated with existing showCarbineModalBottomSheet design system
+✅ Added payment type detection with correct icons and colors
+
+## Technical Notes
+- Transaction data comes from Rust backend via FFI bridge (lib/multimint.dart)
+- Current transaction model: {received, amount, module, timestamp, operationId}
+- Modal uses existing showCarbineModalBottomSheet from lib/theme.dart
+- Transaction types: 'ln'/'lnv2' (Lightning), 'wallet' (On-chain), 'mint' (E-cash)
+- Files modified: lib/widgets/transaction_detail_modal.dart (new), lib/widgets/transaction_item.dart
+
+## Architecture
+- Flutter frontend in lib/
+- Rust backend in rust/carbine_fedimint/
+- FFI bindings generated via flutter_rust_bridge
+- Database: RocksDB for persistence
+- Commands: `just generate` after Rust changes, `just build-linux` to compile
