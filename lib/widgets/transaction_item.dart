@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:carbine/multimint.dart';
 import 'package:carbine/utils.dart';
+import 'package:carbine/theme.dart';
+import 'package:carbine/widgets/transaction_detail_modal.dart';
 
 class TransactionItem extends StatelessWidget {
   final Transaction tx;
@@ -40,26 +42,35 @@ class TransactionItem extends StatelessWidget {
       elevation: 4,
       margin: const EdgeInsets.symmetric(vertical: 6),
       color: Theme.of(context).colorScheme.surface,
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor:
-              isIncoming
-                  ? Colors.greenAccent.withOpacity(0.1)
-                  : Colors.redAccent.withOpacity(0.1),
-          child: Icon(
-            moduleIcon,
-            color: isIncoming ? Colors.greenAccent : Colors.redAccent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () {
+          showCarbineModalBottomSheet(
+            context: context,
+            child: TransactionDetailModal(transaction: tx),
+          );
+        },
+        child: ListTile(
+          leading: CircleAvatar(
+            backgroundColor:
+                isIncoming
+                    ? Colors.greenAccent.withOpacity(0.1)
+                    : Colors.redAccent.withOpacity(0.1),
+            child: Icon(
+              moduleIcon,
+              color: isIncoming ? Colors.greenAccent : Colors.redAccent,
+            ),
           ),
+          title: Text(
+            isIncoming ? "Received" : "Sent",
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          subtitle: Text(
+            formattedDate,
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          trailing: Text(formattedAmount, style: amountStyle),
         ),
-        title: Text(
-          isIncoming ? "Received" : "Sent",
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-        subtitle: Text(
-          formattedDate,
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-        trailing: Text(formattedAmount, style: amountStyle),
       ),
     );
   }

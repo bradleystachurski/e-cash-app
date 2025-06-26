@@ -446,8 +446,8 @@ impl Multimint {
                         bitcoin::Network::Signet => "https://mutinynet.com/api".to_string(),
                         bitcoin::Network::Regtest => {
                             // referencing devimint, uncomment for regtest
-                            // "http://localhost:{FM_PORT_ESPLORA}".to_string()
-                            panic!("Regtest requires manually setting the connection params")
+                            "http://localhost:22413".to_string()
+                            // panic!("Regtest requires manually setting the connection params")
                         }
                         network => {
                             panic!("{network} is not a supported network")
