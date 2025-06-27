@@ -454,6 +454,7 @@ class Transaction {
   final String module;
   final BigInt timestamp;
   final Uint8List operationId;
+  final String? txid;
 
   const Transaction({
     required this.received,
@@ -461,6 +462,7 @@ class Transaction {
     required this.module,
     required this.timestamp,
     required this.operationId,
+    this.txid,
   });
 
   @override
@@ -469,7 +471,8 @@ class Transaction {
       amount.hashCode ^
       module.hashCode ^
       timestamp.hashCode ^
-      operationId.hashCode;
+      operationId.hashCode ^
+      txid.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -480,7 +483,8 @@ class Transaction {
           amount == other.amount &&
           module == other.module &&
           timestamp == other.timestamp &&
-          operationId == other.operationId;
+          operationId == other.operationId &&
+          txid == other.txid;
 }
 
 class Utxo {

@@ -1,49 +1,53 @@
-# Fedimint App Development Todo
+## Transaction Hash and Explorer Links Implementation Status
 
-## Project Context
-This is a Fedimint wallet app built with Flutter frontend and Rust backend. The app supports Lightning, on-chain, and e-cash payments. We're currently enhancing the transaction history UI to show detailed information in clickable modals.
+### ✅ COMPLETED TASKS:
 
-## NOW (Currently Working On)
-- Planning next transaction detail modal enhancements
+1. **Modified Rust Transaction struct** - Added optional `txid: Option<String>` field to store transaction hash
+   - Location: `rust/carbine_fedimint/src/multimint.rs` line 134
 
-## TODO (Ranked by Priority)
+2. **Updated transaction retrieval logic** - Modified wallet transaction creation to populate txid field:
+   - Deposit transactions: Extract txid from `DepositStateV2::Claimed { btc_out_point }` 
+   - Withdrawal transactions: Extract txid from `WithdrawState::Succeeded(txid)`
+   - Non-wallet transactions (lightning, ecash): Set txid to None
+   - Location: `rust/carbine_fedimint/src/multimint.rs` lines ~1825 and ~1841
 
-### High Priority
-1. Add payment-specific details to transaction modal:
-   - Lightning: payment hash, invoice, gateway info
-   - On-chain: transaction hash, block height, confirmations
-   - E-cash: token info, notes count
-2. Enhance modal with more transaction metadata from operation log
-3. Add transaction status indicators (pending, confirmed, failed)
+3. **Regenerated Flutter bindings** - Ran `just generate` to update Dart Transaction model with txid field
+   - Location: `lib/multimint.dart` line 457
 
-### Medium Priority
-4. Add search/filter functionality to transaction history
-5. Add transaction export functionality
-6. Improve transaction loading performance with better pagination
-7. Add transaction grouping by date/type
+4. **Updated Flutter UI** - Enhanced transaction details modal:
+   - Added network parameter to TransactionDetailModal and TransactionItem
+   - Added txid display with copy functionality for on-chain transactions
+   - Added blockchain explorer links: mempool.space for mainnet, mutinynet.com for signet
+   - Location: `lib/widgets/transaction_detail_modal.dart` 
+   - Location: `lib/widgets/transaction_item.dart`
+   - Location: `lib/widgets/transactions_list.dart`
 
-### Low Priority
-8. Add transaction sharing functionality
-9. Add transaction notes/labels feature
-10. Add dark mode optimizations for transaction UI
+5. **Network detection** - Uses federation.network field to determine explorer:
+   - 'bitcoin' -> https://mempool.space/tx/{txid}
+   - 'signet' -> https://mutinynet.com/tx/{txid}
 
-## DONE
-✅ Created basic TransactionDetailModal widget with common transaction info
-✅ Made TransactionItem rows clickable to show modal
-✅ Added operation ID copy functionality with toast notification
-✅ Integrated with existing showCarbineModalBottomSheet design system
-✅ Added payment type detection with correct icons and colors
+### ✅ TESTING STATUS:
+- Rust compilation successful (`just build-linux`)
+- Flutter analysis passed (no new errors introduced)
+- Code formatted successfully
 
-## Technical Notes
-- Transaction data comes from Rust backend via FFI bridge (lib/multimint.dart)
-- Current transaction model: {received, amount, module, timestamp, operationId}
-- Modal uses existing showCarbineModalBottomSheet from lib/theme.dart
-- Transaction types: 'ln'/'lnv2' (Lightning), 'wallet' (On-chain), 'mint' (E-cash)
-- Files modified: lib/widgets/transaction_detail_modal.dart (new), lib/widgets/transaction_item.dart
+### 🎯 WHAT WAS IMPLEMENTED:
+The transaction details modal now shows:
+- Transaction Hash field (only for on-chain wallet transactions)  
+- Formatted txid with copy button
+- "View on blockchain explorer" link when network is known
+- Links to appropriate explorer based on federation network
 
-## Architecture
-- Flutter frontend in lib/
-- Rust backend in rust/carbine_fedimint/
-- FFI bindings generated via flutter_rust_bridge
-- Database: RocksDB for persistence
-- Commands: `just generate` after Rust changes, `just build-linux` to compile
+### 📁 KEY FILES MODIFIED:
+- `rust/carbine_fedimint/src/multimint.rs` - Added txid to Transaction struct and population logic
+- `lib/widgets/transaction_detail_modal.dart` - Added txid display and explorer links
+- `lib/widgets/transaction_item.dart` - Pass network info to modal
+- `lib/widgets/transactions_list.dart` - Pass federation network to transaction items
+
+### 🧪 TO TEST:
+1. Run the app with `just run`
+2. Make an on-chain deposit or withdrawal 
+3. View transaction details - should show "Transaction Hash" field
+4. Test copy functionality and explorer link
+
+The implementation is complete and ready for use!

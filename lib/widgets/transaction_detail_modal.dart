@@ -3,11 +3,13 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:carbine/multimint.dart';
 import 'package:carbine/utils.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class TransactionDetailModal extends StatelessWidget {
   final Transaction transaction;
+  final String? network;
 
-  const TransactionDetailModal({super.key, required this.transaction});
+  const TransactionDetailModal({super.key, required this.transaction, this.network});
 
   @override
   Widget build(BuildContext context) {
@@ -115,6 +117,16 @@ class TransactionDetailModal extends StatelessWidget {
             _formatOperationId(transaction.operationId),
           ),
           
+          // Show transaction hash for on-chain transactions
+          if (transaction.txid != null) ...[
+            const SizedBox(height: 16),
+            _buildTxidRow(
+              context,
+              'Transaction Hash',
+              transaction.txid!,
+            ),
+          ],
+          
           const SizedBox(height: 24),
           
           // Close button
@@ -203,5 +215,93 @@ class TransactionDetailModal extends StatelessWidget {
       return '${hex.substring(0, 8)}...${hex.substring(hex.length - 8)}';
     }
     return hex;
+  }
+
+  String? _getExplorerUrl(String txid) {
+    if (network == null) return null;
+    switch (network) {
+      case 'bitcoin':
+        return 'https://mempool.space/tx/$txid';
+      case 'signet':
+        return 'https://mutinynet.com/tx/$txid';
+      default:
+        return null;
+    }
+  }
+
+  String _formatTxid(String txid) {
+    if (txid.length > 16) {
+      return '${txid.substring(0, 8)}...${txid.substring(txid.length - 8)}';
+    }
+    return txid;
+  }
+
+  Widget _buildTxidRow(BuildContext context, String label, String txid) {
+    final explorerUrl = _getExplorerUrl(txid);
+    
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 100,
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _formatTxid(txid),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: txid));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Transaction hash copied to clipboard'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.copy, size: 20),
+                    tooltip: 'Copy to clipboard',
+                  ),
+                ],
+              ),
+              if (explorerUrl != null) ...[
+                const SizedBox(height: 4),
+                InkWell(
+                  onTap: () async {
+                    final uri = Uri.parse(explorerUrl);
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                    }
+                  },
+                  child: Text(
+                    'View on blockchain explorer',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
   }
 }

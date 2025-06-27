@@ -7858,12 +7858,14 @@ impl SseDecode for crate::multimint::Transaction {
         let mut var_module = <String>::sse_decode(deserializer);
         let mut var_timestamp = <u64>::sse_decode(deserializer);
         let mut var_operationId = <Vec<u8>>::sse_decode(deserializer);
+        let mut var_txid = <Option<String>>::sse_decode(deserializer);
         return crate::multimint::Transaction {
             received: var_received,
             amount: var_amount,
             module: var_module,
             timestamp: var_timestamp,
             operation_id: var_operationId,
+            txid: var_txid,
         };
     }
 }
@@ -9049,6 +9051,7 @@ impl flutter_rust_bridge::IntoDart for crate::multimint::Transaction {
             self.module.into_into_dart().into_dart(),
             self.timestamp.into_into_dart().into_dart(),
             self.operation_id.into_into_dart().into_dart(),
+            self.txid.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -9926,6 +9929,7 @@ impl SseEncode for crate::multimint::Transaction {
         <String>::sse_encode(self.module, serializer);
         <u64>::sse_encode(self.timestamp, serializer);
         <Vec<u8>>::sse_encode(self.operation_id, serializer);
+        <Option<String>>::sse_encode(self.txid, serializer);
     }
 }
 

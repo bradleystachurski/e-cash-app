@@ -6779,14 +6779,15 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   Transaction dco_decode_transaction(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 5)
-      throw Exception('unexpected arr length: expect 5 but see ${arr.length}');
+    if (arr.length != 6)
+      throw Exception('unexpected arr length: expect 6 but see ${arr.length}');
     return Transaction(
       received: dco_decode_bool(arr[0]),
       amount: dco_decode_u_64(arr[1]),
       module: dco_decode_String(arr[2]),
       timestamp: dco_decode_u_64(arr[3]),
       operationId: dco_decode_list_prim_u_8_strict(arr[4]),
+      txid: dco_decode_opt_String(arr[5]),
     );
   }
 
@@ -8131,12 +8132,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_module = sse_decode_String(deserializer);
     var var_timestamp = sse_decode_u_64(deserializer);
     var var_operationId = sse_decode_list_prim_u_8_strict(deserializer);
+    var var_txid = sse_decode_opt_String(deserializer);
     return Transaction(
       received: var_received,
       amount: var_amount,
       module: var_module,
       timestamp: var_timestamp,
       operationId: var_operationId,
+      txid: var_txid,
     );
   }
 
@@ -9517,6 +9520,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_String(self.module, serializer);
     sse_encode_u_64(self.timestamp, serializer);
     sse_encode_list_prim_u_8_strict(self.operationId, serializer);
+    sse_encode_opt_String(self.txid, serializer);
   }
 
   @protected

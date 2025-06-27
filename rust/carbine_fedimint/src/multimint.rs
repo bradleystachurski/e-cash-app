@@ -131,6 +131,7 @@ pub struct Transaction {
     pub module: String,
     pub timestamp: u64,
     pub operation_id: Vec<u8>,
+    pub txid: Option<String>,
 }
 
 #[derive(Debug, Serialize, Clone, Eq, PartialEq)]
@@ -1735,6 +1736,7 @@ impl Multimint {
                                         module: "lnv2".to_string(),
                                         timestamp,
                                         operation_id: key.operation_id.0.to_vec(),
+                                        txid: None,
                                     })
                                 } else {
                                     None
@@ -1749,6 +1751,7 @@ impl Multimint {
                                         module: "lnv2".to_string(),
                                         timestamp,
                                         operation_id: key.operation_id.0.to_vec(),
+                                        txid: None,
                                     })
                                 } else {
                                     None
@@ -1794,6 +1797,7 @@ impl Multimint {
                                     module: "mint".to_string(),
                                     timestamp,
                                     operation_id: key.operation_id.0.to_vec(),
+                                    txid: None,
                                 })
                             }
                             MintOperationMetaVariant::Reissuance { .. } => {
@@ -1807,6 +1811,7 @@ impl Multimint {
                                         module: "mint".to_string(),
                                         timestamp,
                                         operation_id: key.operation_id.0.to_vec(),
+                                        txid: None,
                                     })
                                 } else {
                                     None
@@ -1819,7 +1824,7 @@ impl Multimint {
                         match meta.variant {
                             WalletOperationMetaVariant::Deposit { .. } => {
                                 let outcome = op_log_val.outcome::<DepositStateV2>();
-                                if let Some(DepositStateV2::Claimed { btc_deposited, .. }) = outcome
+                                if let Some(DepositStateV2::Claimed { btc_deposited, btc_out_point }) = outcome
                                 {
                                     let amount = Amount::from_sats(btc_deposited.to_sat()).msats;
                                     Some(Transaction {
@@ -1828,6 +1833,7 @@ impl Multimint {
                                         module: "wallet".to_string(),
                                         timestamp,
                                         operation_id: key.operation_id.0.to_vec(),
+                                        txid: Some(btc_out_point.txid.to_string()),
                                     })
                                 } else {
                                     None
@@ -1835,13 +1841,14 @@ impl Multimint {
                             }
                             WalletOperationMetaVariant::Withdraw { amount, .. } => {
                                 let outcome = op_log_val.outcome::<WithdrawState>();
-                                if let Some(WithdrawState::Succeeded(_txid)) = outcome {
+                                if let Some(WithdrawState::Succeeded(txid)) = outcome {
                                     Some(Transaction {
                                         received: false,
                                         amount: Amount::from_sats(amount.to_sat()).msats,
                                         module: "wallet".to_string(),
                                         timestamp,
                                         operation_id: key.operation_id.0.to_vec(),
+                                        txid: Some(txid.to_string()),
                                     })
                                 } else {
                                     None
@@ -1885,6 +1892,7 @@ impl Multimint {
             module: "ln".to_string(),
             timestamp,
             operation_id: operation_id.0.to_vec(),
+            txid: None,
         };
 
         // First check if the send was over the Lightning network
@@ -1923,6 +1931,7 @@ impl Multimint {
                 module: "ln".to_string(),
                 timestamp,
                 operation_id: operation_id.0.to_vec(),
+                txid: None,
             }),
             _ => None,
         }

@@ -7,8 +7,9 @@ import 'package:carbine/widgets/transaction_detail_modal.dart';
 
 class TransactionItem extends StatelessWidget {
   final Transaction tx;
+  final String? network;
 
-  const TransactionItem({super.key, required this.tx});
+  const TransactionItem({super.key, required this.tx, this.network});
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +48,7 @@ class TransactionItem extends StatelessWidget {
         onTap: () {
           showCarbineModalBottomSheet(
             context: context,
-            child: TransactionDetailModal(transaction: tx),
+            child: TransactionDetailModal(transaction: tx, network: network),
           );
         },
         child: ListTile(
