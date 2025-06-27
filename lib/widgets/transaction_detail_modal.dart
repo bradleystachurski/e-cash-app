@@ -9,12 +9,18 @@ class TransactionDetailModal extends StatelessWidget {
   final Transaction transaction;
   final String? network;
 
-  const TransactionDetailModal({super.key, required this.transaction, this.network});
+  const TransactionDetailModal({
+    super.key,
+    required this.transaction,
+    this.network,
+  });
 
   @override
   Widget build(BuildContext context) {
     final isIncoming = transaction.received;
-    final date = DateTime.fromMillisecondsSinceEpoch(transaction.timestamp.toInt());
+    final date = DateTime.fromMillisecondsSinceEpoch(
+      transaction.timestamp.toInt(),
+    );
     final formattedDate = DateFormat.yMMMd().add_jm().format(date);
     final formattedAmount = formatBalance(transaction.amount, false);
 
@@ -53,11 +59,7 @@ class TransactionDetailModal extends StatelessWidget {
               CircleAvatar(
                 radius: 24,
                 backgroundColor: amountColor.withOpacity(0.1),
-                child: Icon(
-                  moduleIcon,
-                  color: amountColor,
-                  size: 28,
-                ),
+                child: Icon(moduleIcon, color: amountColor, size: 28),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -66,7 +68,9 @@ class TransactionDetailModal extends StatelessWidget {
                   children: [
                     Text(
                       formattedAmount,
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      style: Theme.of(
+                        context,
+                      ).textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: amountColor,
                       ),
@@ -82,63 +86,51 @@ class TransactionDetailModal extends StatelessWidget {
               ),
             ],
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           // Transaction details
-          _buildDetailRow(
-            context,
-            'Address Created',
-            formattedDate,
-          ),
-          
+          _buildDetailRow(context, 'Address Created', formattedDate),
+
+          // Show block inclusion time if available (for on-chain transactions)
+          if (transaction.txid != null && transaction.blockTime != null) ...[
+            const SizedBox(height: 16),
+            _buildDetailRow(
+              context,
+              'Block Inclusion Time',
+              _formatBlockTime(transaction.blockTime!),
+            ),
+          ],
+
           const SizedBox(height: 16),
-          
-          _buildDetailRow(
-            context,
-            'Payment Type',
-            paymentType,
-          ),
-          
+
+          _buildDetailRow(context, 'Payment Type', paymentType),
+
           const SizedBox(height: 16),
-          
+
           _buildDetailRow(
             context,
             'Direction',
             isIncoming ? 'Received' : 'Sent',
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           // Operation ID with copy button
           _buildCopyableDetailRow(
             context,
             'Operation ID',
             _formatOperationId(transaction.operationId),
           ),
-          
+
           // Show transaction hash for on-chain transactions
           if (transaction.txid != null) ...[
             const SizedBox(height: 16),
-            _buildTxidRow(
-              context,
-              'Transaction Hash',
-              transaction.txid!,
-            ),
-            
-            // Show block inclusion time if available
-            if (transaction.blockTime != null) ...[
-              const SizedBox(height: 16),
-              _buildDetailRow(
-                context,
-                'Block Inclusion Time',
-                _formatBlockTime(transaction.blockTime!),
-              ),
-            ],
+            _buildTxidRow(context, 'Transaction Hash', transaction.txid!),
           ],
-          
+
           const SizedBox(height: 24),
-          
+
           // Close button
           SizedBox(
             width: double.infinity,
@@ -166,16 +158,17 @@ class TransactionDetailModal extends StatelessWidget {
           ),
         ),
         Expanded(
-          child: Text(
-            value,
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
+          child: Text(value, style: Theme.of(context).textTheme.bodyMedium),
         ),
       ],
     );
   }
 
-  Widget _buildCopyableDetailRow(BuildContext context, String label, String value) {
+  Widget _buildCopyableDetailRow(
+    BuildContext context,
+    String label,
+    String value,
+  ) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -194,9 +187,9 @@ class TransactionDetailModal extends StatelessWidget {
               Expanded(
                 child: Text(
                   value,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontFamily: 'monospace',
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontFamily: 'monospace'),
                 ),
               ),
               IconButton(
@@ -220,7 +213,9 @@ class TransactionDetailModal extends StatelessWidget {
   }
 
   String _formatOperationId(List<int> operationId) {
-    final hex = operationId.map((b) => b.toRadixString(16).padLeft(2, '0')).join('');
+    final hex = operationId
+        .map((b) => b.toRadixString(16).padLeft(2, '0'))
+        .join('');
     if (hex.length > 16) {
       return '${hex.substring(0, 8)}...${hex.substring(hex.length - 8)}';
     }
@@ -247,13 +242,15 @@ class TransactionDetailModal extends StatelessWidget {
   }
 
   String _formatBlockTime(BigInt blockTime) {
-    final dateTime = DateTime.fromMillisecondsSinceEpoch(blockTime.toInt() * 1000);
-    return '${dateTime.day}/${dateTime.month}/${dateTime.year} ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
+    final dateTime = DateTime.fromMillisecondsSinceEpoch(
+      blockTime.toInt() * 1000,
+    );
+    return DateFormat.yMMMd().add_jm().format(dateTime);
   }
 
   Widget _buildTxidRow(BuildContext context, String label, String txid) {
     final explorerUrl = _getExplorerUrl(txid);
-    
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -275,9 +272,9 @@ class TransactionDetailModal extends StatelessWidget {
                   Expanded(
                     child: Text(
                       _formatTxid(txid),
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontFamily: 'monospace',
-                      ),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyMedium?.copyWith(fontFamily: 'monospace'),
                     ),
                   ),
                   IconButton(
@@ -301,7 +298,10 @@ class TransactionDetailModal extends StatelessWidget {
                   onTap: () async {
                     final uri = Uri.parse(explorerUrl);
                     if (await canLaunchUrl(uri)) {
-                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                      await launchUrl(
+                        uri,
+                        mode: LaunchMode.externalApplication,
+                      );
                     }
                   },
                   child: Text(
