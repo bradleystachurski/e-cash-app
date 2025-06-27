@@ -76,7 +76,7 @@ class TransactionDetailModal extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      '$paymentType • ${isIncoming ? "Received" : "Sent"}',
+                      paymentType,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
@@ -90,7 +90,15 @@ class TransactionDetailModal extends StatelessWidget {
           const SizedBox(height: 24),
 
           // Transaction details
-          _buildDetailRow(context, 'Address Created', formattedDate),
+          _buildDetailRow(
+            context,
+            transaction.module == 'wallet' && isIncoming
+                ? 'Deposit Address Created'
+                : transaction.module == 'wallet' && !isIncoming
+                ? 'Withdrawal Initiated'
+                : 'Created',
+            formattedDate,
+          ),
 
           // Show block inclusion time if available (for on-chain transactions)
           if (transaction.txid != null && transaction.blockTime != null) ...[
@@ -101,27 +109,6 @@ class TransactionDetailModal extends StatelessWidget {
               _formatBlockTime(transaction.blockTime!),
             ),
           ],
-
-          const SizedBox(height: 16),
-
-          _buildDetailRow(context, 'Payment Type', paymentType),
-
-          const SizedBox(height: 16),
-
-          _buildDetailRow(
-            context,
-            'Direction',
-            isIncoming ? 'Received' : 'Sent',
-          ),
-
-          const SizedBox(height: 16),
-
-          // Operation ID with copy button
-          _buildCopyableDetailRow(
-            context,
-            'Operation ID',
-            _formatOperationId(transaction.operationId),
-          ),
 
           // Show transaction hash for on-chain transactions
           if (transaction.txid != null) ...[

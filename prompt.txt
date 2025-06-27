@@ -1,1 +1,16 @@
-have a look at the the example.png at the root of the repo. it shows the current state of the on chain withdrawal transaction detail. some of the data is useful but it's not very cleanly presented. the address created time and the block inclusion time are not formatted the same and they should be in rows next to each other. I think the block inclusion time should be right below the address created time. can you figure out how to accomplish that?
+have a look at on_chain_send_details.png and on_chain_receive_details.png at the root of the repo. we need to make some updates.
+
+for receives
+- rename address created to deposit address created
+- get rid of payment type, it's already obvious and not useful additional info
+- get rid of  direction received
+  - that's also already obvious
+- get rid of operation id, that's not relevant for the user
+
+for sends
+- address created doesn't make sense
+  - instead this is when the withdrawal is initiated
+- get rid of payment type, it's already obvious and not useful additional info
+- get rid of  direction sent
+  - that's also already obvious
+- get rid of operation id, that's not relevant for the user
