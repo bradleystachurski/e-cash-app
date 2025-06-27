@@ -88,7 +88,7 @@ class TransactionDetailModal extends StatelessWidget {
           // Transaction details
           _buildDetailRow(
             context,
-            'Date',
+            'Address Created',
             formattedDate,
           ),
           
@@ -125,6 +125,16 @@ class TransactionDetailModal extends StatelessWidget {
               'Transaction Hash',
               transaction.txid!,
             ),
+            
+            // Show block inclusion time if available
+            if (transaction.blockTime != null) ...[
+              const SizedBox(height: 16),
+              _buildDetailRow(
+                context,
+                'Block Inclusion Time',
+                _formatBlockTime(transaction.blockTime!),
+              ),
+            ],
           ],
           
           const SizedBox(height: 24),
@@ -234,6 +244,11 @@ class TransactionDetailModal extends StatelessWidget {
       return '${txid.substring(0, 8)}...${txid.substring(txid.length - 8)}';
     }
     return txid;
+  }
+
+  String _formatBlockTime(BigInt blockTime) {
+    final dateTime = DateTime.fromMillisecondsSinceEpoch(blockTime.toInt() * 1000);
+    return '${dateTime.day}/${dateTime.month}/${dateTime.year} ${dateTime.hour.toString().padLeft(2, '0')}:${dateTime.minute.toString().padLeft(2, '0')}';
   }
 
   Widget _buildTxidRow(BuildContext context, String label, String txid) {

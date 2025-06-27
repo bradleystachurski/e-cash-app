@@ -2,52 +2,68 @@
 
 ### ✅ COMPLETED TASKS:
 
-1. **Modified Rust Transaction struct** - Added optional `txid: Option<String>` field to store transaction hash
-   - Location: `rust/carbine_fedimint/src/multimint.rs` line 134
+1. **Modified Rust Transaction struct** - Added optional `txid: Option<String>` and `block_time: Option<u64>` fields
+   - Location: `rust/carbine_fedimint/src/multimint.rs` lines 134-135
 
-2. **Updated transaction retrieval logic** - Modified wallet transaction creation to populate txid field:
-   - Deposit transactions: Extract txid from `DepositStateV2::Claimed { btc_out_point }` 
-   - Withdrawal transactions: Extract txid from `WithdrawState::Succeeded(txid)`
-   - Non-wallet transactions (lightning, ecash): Set txid to None
-   - Location: `rust/carbine_fedimint/src/multimint.rs` lines ~1825 and ~1841
+2. **Updated transaction retrieval logic** - Modified wallet transaction creation to populate txid and block_time fields:
+   - Deposit transactions: Extract txid from `DepositStateV2::Claimed { btc_out_point }` and fetch block_time from explorer
+   - Withdrawal transactions: Extract txid from `WithdrawState::Succeeded(txid)` and fetch block_time from explorer  
+   - Non-wallet transactions (lightning, ecash): Set txid and block_time to None
+   - Location: `rust/carbine_fedimint/src/multimint.rs` lines ~1854-1905
 
-3. **Regenerated Flutter bindings** - Ran `just generate` to update Dart Transaction model with txid field
-   - Location: `lib/multimint.dart` line 457
+3. **Added block explorer API calls** - Implemented `fetch_tx_block_time()` function to query block explorers:
+   - Supports mempool.space (Bitcoin), mutinynet.com (Signet), and localhost (Regtest)
+   - Fetches `block_time` field from transaction API response
+   - Location: `rust/carbine_fedimint/src/multimint.rs` lines 740-766
 
-4. **Updated Flutter UI** - Enhanced transaction details modal:
-   - Added network parameter to TransactionDetailModal and TransactionItem
+4. **Regenerated Flutter bindings** - Ran `just generate` to update Dart Transaction model with both txid and blockTime fields
+   - Location: `lib/multimint.dart` lines 457-458
+
+5. **Updated Flutter UI** - Enhanced transaction details modal:
+   - Changed "Date" field to "Address Created" for better clarity
+   - Added "Block Inclusion Time" field for on-chain transactions with block_time data
    - Added txid display with copy functionality for on-chain transactions
    - Added blockchain explorer links: mempool.space for mainnet, mutinynet.com for signet
-   - Location: `lib/widgets/transaction_detail_modal.dart` 
-   - Location: `lib/widgets/transaction_item.dart`
-   - Location: `lib/widgets/transactions_list.dart`
+   - Location: `lib/widgets/transaction_detail_modal.dart` lines 91, 130-137, 249-252
 
-5. **Network detection** - Uses federation.network field to determine explorer:
+6. **Network detection** - Uses federation.network field to determine explorer:
    - 'bitcoin' -> https://mempool.space/tx/{txid}
    - 'signet' -> https://mutinynet.com/tx/{txid}
 
 ### ✅ TESTING STATUS:
 - Rust compilation successful (`just build-linux`)
+- Flutter bindings regenerated successfully (`just generate`)
+- Dart code formatted successfully (`dart format lib/*.dart`)
 - Flutter analysis passed (no new errors introduced)
-- Code formatted successfully
 
 ### 🎯 WHAT WAS IMPLEMENTED:
 The transaction details modal now shows:
+- "Address Created" field (renamed from "Date" for clarity)
+- "Block Inclusion Time" field (only for on-chain wallet transactions with block time data)
 - Transaction Hash field (only for on-chain wallet transactions)  
 - Formatted txid with copy button
 - "View on blockchain explorer" link when network is known
 - Links to appropriate explorer based on federation network
 
+**NEW FEATURES ADDED:**
+- **Block time fetching**: Queries block explorers (mempool.space, mutinynet.com) to get transaction inclusion time
+- **Smart field display**: Shows block inclusion time only when available for on-chain transactions
+- **Improved labeling**: "Address Created" vs "Block Inclusion Time" for better user understanding
+
 ### 📁 KEY FILES MODIFIED:
-- `rust/carbine_fedimint/src/multimint.rs` - Added txid to Transaction struct and population logic
-- `lib/widgets/transaction_detail_modal.dart` - Added txid display and explorer links
-- `lib/widgets/transaction_item.dart` - Pass network info to modal
-- `lib/widgets/transactions_list.dart` - Pass federation network to transaction items
+- `rust/carbine_fedimint/src/multimint.rs` - Added block_time field, fetch_tx_block_time() function, and population logic
+- `lib/widgets/transaction_detail_modal.dart` - Added block inclusion time display and improved field labels
+- `lib/multimint.dart` - Updated Transaction model with blockTime field (auto-generated)
 
 ### 🧪 TO TEST:
 1. Run the app with `just run`
 2. Make an on-chain deposit or withdrawal 
-3. View transaction details - should show "Transaction Hash" field
-4. Test copy functionality and explorer link
+3. View transaction details - should show:
+   - "Address Created" field (timestamp when address was created)
+   - "Block Inclusion Time" field (when transaction was included in block, if available)
+   - "Transaction Hash" field with copy functionality
+   - "View on blockchain explorer" link
+4. Test copy functionality and explorer links
+5. Verify block inclusion time appears only for confirmed on-chain transactions
 
-The implementation is complete and ready for use!
+The enhanced implementation is complete and ready for use!

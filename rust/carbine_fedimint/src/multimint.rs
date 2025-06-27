@@ -132,6 +132,7 @@ pub struct Transaction {
     pub timestamp: u64,
     pub operation_id: Vec<u8>,
     pub txid: Option<String>,
+    pub block_time: Option<u64>,
 }
 
 #[derive(Debug, Serialize, Clone, Eq, PartialEq)]
@@ -734,6 +735,34 @@ impl Multimint {
             ))
             .await;
         }
+    }
+
+    async fn fetch_tx_block_time(&self, txid: &str, network: bitcoin::Network) -> Option<u64> {
+        let api_url = match network {
+            bitcoin::Network::Bitcoin => "https://mempool.space/api".to_string(),
+            bitcoin::Network::Signet => "https://mutinynet.com/api".to_string(),
+            bitcoin::Network::Regtest => {
+                "http://localhost:22413".to_string()
+            }
+            _ => return None,
+        };
+
+        let client = reqwest::Client::new();
+        let resp = client
+            .get(format!("{}/tx/{}", api_url, txid))
+            .send()
+            .await
+            .ok()?
+            .error_for_status()
+            .ok()?
+            .text()
+            .await
+            .ok()?;
+
+        let json: serde_json::Value = serde_json::from_str(&resp).ok()?;
+        json.get("status")
+            .and_then(|s| s.get("block_time"))
+            .and_then(|t| t.as_u64())
     }
 
     pub async fn get_cached_federation_meta(
@@ -1737,6 +1766,7 @@ impl Multimint {
                                         timestamp,
                                         operation_id: key.operation_id.0.to_vec(),
                                         txid: None,
+                                        block_time: None,
                                     })
                                 } else {
                                     None
@@ -1752,6 +1782,7 @@ impl Multimint {
                                         timestamp,
                                         operation_id: key.operation_id.0.to_vec(),
                                         txid: None,
+                                        block_time: None,
                                     })
                                 } else {
                                     None
@@ -1798,6 +1829,7 @@ impl Multimint {
                                     timestamp,
                                     operation_id: key.operation_id.0.to_vec(),
                                     txid: None,
+                                    block_time: None,
                                 })
                             }
                             MintOperationMetaVariant::Reissuance { .. } => {
@@ -1812,6 +1844,7 @@ impl Multimint {
                                         timestamp,
                                         operation_id: key.operation_id.0.to_vec(),
                                         txid: None,
+                                        block_time: None,
                                     })
                                 } else {
                                     None
@@ -1827,13 +1860,23 @@ impl Multimint {
                                 if let Some(DepositStateV2::Claimed { btc_deposited, btc_out_point }) = outcome
                                 {
                                     let amount = Amount::from_sats(btc_deposited.to_sat()).msats;
+                                    let txid = btc_out_point.txid.to_string();
+                                    
+                                    // Fetch block time from explorer
+                                    let block_time = if let Ok(wallet_module) = client.get_first_module::<WalletClientModule>() {
+                                        self.fetch_tx_block_time(&txid, wallet_module.get_network()).await
+                                    } else {
+                                        None
+                                    };
+                                    
                                     Some(Transaction {
                                         received: true,
                                         amount,
                                         module: "wallet".to_string(),
                                         timestamp,
                                         operation_id: key.operation_id.0.to_vec(),
-                                        txid: Some(btc_out_point.txid.to_string()),
+                                        txid: Some(txid),
+                                        block_time,
                                     })
                                 } else {
                                     None
@@ -1842,13 +1885,23 @@ impl Multimint {
                             WalletOperationMetaVariant::Withdraw { amount, .. } => {
                                 let outcome = op_log_val.outcome::<WithdrawState>();
                                 if let Some(WithdrawState::Succeeded(txid)) = outcome {
+                                    let txid_str = txid.to_string();
+                                    
+                                    // Fetch block time from explorer
+                                    let block_time = if let Ok(wallet_module) = client.get_first_module::<WalletClientModule>() {
+                                        self.fetch_tx_block_time(&txid_str, wallet_module.get_network()).await
+                                    } else {
+                                        None
+                                    };
+                                    
                                     Some(Transaction {
                                         received: false,
                                         amount: Amount::from_sats(amount.to_sat()).msats,
                                         module: "wallet".to_string(),
                                         timestamp,
                                         operation_id: key.operation_id.0.to_vec(),
-                                        txid: Some(txid.to_string()),
+                                        txid: Some(txid_str),
+                                        block_time,
                                     })
                                 } else {
                                     None
@@ -1893,6 +1946,7 @@ impl Multimint {
             timestamp,
             operation_id: operation_id.0.to_vec(),
             txid: None,
+            block_time: None,
         };
 
         // First check if the send was over the Lightning network
@@ -1932,6 +1986,7 @@ impl Multimint {
                 timestamp,
                 operation_id: operation_id.0.to_vec(),
                 txid: None,
+                block_time: None,
             }),
             _ => None,
         }
