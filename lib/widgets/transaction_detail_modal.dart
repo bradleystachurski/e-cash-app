@@ -51,43 +51,41 @@ class TransactionDetailModal extends StatelessWidget {
       padding: const EdgeInsets.all(24.0),
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Centered header with icon and amount
-          Column(
-            children: [
-              CircleAvatar(
-                radius: 24,
-                backgroundColor: amountColor.withOpacity(0.1),
-                child: Icon(moduleIcon, color: amountColor, size: 28),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                formattedAmount,
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: amountColor,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                paymentType,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
+          // Header matching RFQ style
+          CircleAvatar(
+            radius: 30,
+            backgroundColor: amountColor.withOpacity(0.2),
+            child: Icon(moduleIcon, color: amountColor, size: 32),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            formattedAmount,
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: amountColor,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            paymentType,
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
 
           const SizedBox(height: 24),
 
-          // Transaction details in table format
+          // Transaction details matching RFQ table style
           Container(
             decoration: BoxDecoration(
               border: Border.all(
-                color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
+                width: 1,
               ),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(12),
+              color: Theme.of(context).colorScheme.surface,
             ),
             child: Column(
               children: [
@@ -99,6 +97,8 @@ class TransactionDetailModal extends StatelessWidget {
                       ? 'Withdrawal Initiated'
                       : 'Created',
                   formattedDate,
+                  showDivider:
+                      transaction.blockTime != null || transaction.txid != null,
                 ),
                 // Show block inclusion time if available (for on-chain transactions)
                 if (transaction.txid != null && transaction.blockTime != null)
@@ -106,6 +106,7 @@ class TransactionDetailModal extends StatelessWidget {
                     context,
                     'Block Inclusion Time',
                     _formatBlockTime(transaction.blockTime!),
+                    showDivider: transaction.txid != null,
                   ),
                 // Show transaction hash for on-chain transactions
                 if (transaction.txid != null)
@@ -133,90 +134,46 @@ class TransactionDetailModal extends StatelessWidget {
     );
   }
 
-  Widget _buildTableRow(BuildContext context, String label, String value) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            flex: 2,
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 3,
-            child: Text(
-              value,
-              style: Theme.of(context).textTheme.bodyMedium,
-              textAlign: TextAlign.end,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCopyableDetailRow(
+  Widget _buildTableRow(
     BuildContext context,
     String label,
-    String value,
-  ) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    String value, {
+    bool showDivider = false,
+  }) {
+    return Column(
       children: [
-        SizedBox(
-          width: 100,
-          child: Text(
-            label,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ),
-        Expanded(
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Expanded(
-                child: Text(
-                  value,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(fontFamily: 'monospace'),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
-              IconButton(
-                onPressed: () {
-                  Clipboard.setData(ClipboardData(text: value));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Operation ID copied to clipboard'),
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.copy, size: 20),
-                tooltip: 'Copy to clipboard',
+              const Spacer(),
+              Text(
+                value,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
               ),
             ],
           ),
         ),
+        if (showDivider)
+          Divider(
+            height: 1,
+            thickness: 1,
+            color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+            indent: 20,
+            endIndent: 20,
+          ),
       ],
     );
-  }
-
-  String _formatOperationId(List<int> operationId) {
-    final hex = operationId
-        .map((b) => b.toRadixString(16).padLeft(2, '0'))
-        .join('');
-    if (hex.length > 16) {
-      return '${hex.substring(0, 8)}...${hex.substring(hex.length - 8)}';
-    }
-    return hex;
   }
 
   String? _getExplorerUrl(String txid) {
@@ -248,61 +205,57 @@ class TransactionDetailModal extends StatelessWidget {
   Widget _buildTxidTableRow(BuildContext context, String label, String txid) {
     final explorerUrl = _getExplorerUrl(txid);
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Column(
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Expanded(
-                flex: 2,
-                child: Text(
-                  label,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
-              Expanded(
-                flex: 3,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        _formatTxid(txid),
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontFamily: 'monospace',
+              const Spacer(),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    _formatTxid(txid),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontFamily: 'monospace',
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: txid));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Transaction hash copied to clipboard'),
+                          duration: Duration(seconds: 2),
                         ),
-                        textAlign: TextAlign.end,
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () {
-                        Clipboard.setData(ClipboardData(text: txid));
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Transaction hash copied to clipboard',
-                            ),
-                            duration: Duration(seconds: 2),
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.copy, size: 16),
-                      tooltip: 'Copy to clipboard',
-                      constraints: const BoxConstraints(),
-                      padding: const EdgeInsets.all(4),
-                    ),
-                  ],
-                ),
+                      );
+                    },
+                    icon: const Icon(Icons.copy_outlined, size: 18),
+                    tooltip: 'Copy to clipboard',
+                    constraints: const BoxConstraints(),
+                    padding: const EdgeInsets.all(4),
+                    splashRadius: 16,
+                  ),
+                ],
               ),
             ],
           ),
-          if (explorerUrl != null) ...[
-            const SizedBox(height: 8),
-            Align(
+        ),
+        if (explorerUrl != null) ...[
+          Padding(
+            padding: const EdgeInsets.only(left: 20, right: 20, bottom: 16),
+            child: Align(
               alignment: Alignment.centerRight,
               child: InkWell(
                 onTap: () async {
@@ -320,9 +273,9 @@ class TransactionDetailModal extends StatelessWidget {
                 ),
               ),
             ),
-          ],
+          ),
         ],
-      ),
+      ],
     );
   }
 }

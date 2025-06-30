@@ -1,1 +1,1 @@
-have a look at reference.png at the root of the repo. this is the rfq screen the user sees when they're attempting a withdrawal. now take a look at send.png and receive.png. notice how the formatting isn't unified? can we make the send and receive screens for the transaction details look like the rfq screen in terms of styling?
+have a look at example.png at the root of the repo. it looks like there's a regression. compare this to reference.png at the root of the repo. let's make the styling look unified
