@@ -53,35 +53,27 @@ class TransactionDetailModal extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header with icon and amount
-          Row(
+          // Centered header with icon and amount
+          Column(
             children: [
               CircleAvatar(
                 radius: 24,
                 backgroundColor: amountColor.withOpacity(0.1),
                 child: Icon(moduleIcon, color: amountColor, size: 28),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      formattedAmount,
-                      style: Theme.of(
-                        context,
-                      ).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: amountColor,
-                      ),
-                    ),
-                    Text(
-                      paymentType,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
+              const SizedBox(height: 12),
+              Text(
+                formattedAmount,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: amountColor,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                paymentType,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
             ],
@@ -89,32 +81,42 @@ class TransactionDetailModal extends StatelessWidget {
 
           const SizedBox(height: 24),
 
-          // Transaction details
-          _buildDetailRow(
-            context,
-            transaction.module == 'wallet' && isIncoming
-                ? 'Deposit Address Created'
-                : transaction.module == 'wallet' && !isIncoming
-                ? 'Withdrawal Initiated'
-                : 'Created',
-            formattedDate,
-          ),
-
-          // Show block inclusion time if available (for on-chain transactions)
-          if (transaction.txid != null && transaction.blockTime != null) ...[
-            const SizedBox(height: 16),
-            _buildDetailRow(
-              context,
-              'Block Inclusion Time',
-              _formatBlockTime(transaction.blockTime!),
+          // Transaction details in table format
+          Container(
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+              ),
+              borderRadius: BorderRadius.circular(8),
             ),
-          ],
-
-          // Show transaction hash for on-chain transactions
-          if (transaction.txid != null) ...[
-            const SizedBox(height: 16),
-            _buildTxidRow(context, 'Transaction Hash', transaction.txid!),
-          ],
+            child: Column(
+              children: [
+                _buildTableRow(
+                  context,
+                  transaction.module == 'wallet' && isIncoming
+                      ? 'Deposit Address Created'
+                      : transaction.module == 'wallet' && !isIncoming
+                      ? 'Withdrawal Initiated'
+                      : 'Created',
+                  formattedDate,
+                ),
+                // Show block inclusion time if available (for on-chain transactions)
+                if (transaction.txid != null && transaction.blockTime != null)
+                  _buildTableRow(
+                    context,
+                    'Block Inclusion Time',
+                    _formatBlockTime(transaction.blockTime!),
+                  ),
+                // Show transaction hash for on-chain transactions
+                if (transaction.txid != null)
+                  _buildTxidTableRow(
+                    context,
+                    'Transaction Hash',
+                    transaction.txid!,
+                  ),
+              ],
+            ),
+          ),
 
           const SizedBox(height: 24),
 
@@ -131,23 +133,31 @@ class TransactionDetailModal extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailRow(BuildContext context, String label, String value) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 100,
-          child: Text(
-            label,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+  Widget _buildTableRow(BuildContext context, String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 2,
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
-        ),
-        Expanded(
-          child: Text(value, style: Theme.of(context).textTheme.bodyMedium),
-        ),
-      ],
+          Expanded(
+            flex: 3,
+            child: Text(
+              value,
+              style: Theme.of(context).textTheme.bodyMedium,
+              textAlign: TextAlign.end,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -235,75 +245,84 @@ class TransactionDetailModal extends StatelessWidget {
     return DateFormat.yMMMd().add_jm().format(dateTime);
   }
 
-  Widget _buildTxidRow(BuildContext context, String label, String txid) {
+  Widget _buildTxidTableRow(BuildContext context, String label, String txid) {
     final explorerUrl = _getExplorerUrl(txid);
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 100,
-          child: Text(
-            label,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ),
-        Expanded(
-          child: Column(
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Column(
+        children: [
+          Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      _formatTxid(txid),
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodyMedium?.copyWith(fontFamily: 'monospace'),
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () {
-                      Clipboard.setData(ClipboardData(text: txid));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Transaction hash copied to clipboard'),
-                          duration: Duration(seconds: 2),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.copy, size: 20),
-                    tooltip: 'Copy to clipboard',
-                  ),
-                ],
-              ),
-              if (explorerUrl != null) ...[
-                const SizedBox(height: 4),
-                InkWell(
-                  onTap: () async {
-                    final uri = Uri.parse(explorerUrl);
-                    if (await canLaunchUrl(uri)) {
-                      await launchUrl(
-                        uri,
-                        mode: LaunchMode.externalApplication,
-                      );
-                    }
-                  },
-                  child: Text(
-                    'View on blockchain explorer',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.primary,
-                      decoration: TextDecoration.underline,
-                    ),
+              Expanded(
+                flex: 2,
+                child: Text(
+                  label,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
-              ],
+              ),
+              Expanded(
+                flex: 3,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        _formatTxid(txid),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontFamily: 'monospace',
+                        ),
+                        textAlign: TextAlign.end,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () {
+                        Clipboard.setData(ClipboardData(text: txid));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Transaction hash copied to clipboard',
+                            ),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.copy, size: 16),
+                      tooltip: 'Copy to clipboard',
+                      constraints: const BoxConstraints(),
+                      padding: const EdgeInsets.all(4),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
-        ),
-      ],
+          if (explorerUrl != null) ...[
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: InkWell(
+                onTap: () async {
+                  final uri = Uri.parse(explorerUrl);
+                  if (await canLaunchUrl(uri)) {
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  }
+                },
+                child: Text(
+                  'View on blockchain explorer',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.primary,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }

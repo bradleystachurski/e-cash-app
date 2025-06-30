@@ -1,16 +1,1 @@
-have a look at on_chain_send_details.png and on_chain_receive_details.png at the root of the repo. we need to make some updates.
-
-for receives
-- rename address created to deposit address created
-- get rid of payment type, it's already obvious and not useful additional info
-- get rid of  direction received
-  - that's also already obvious
-- get rid of operation id, that's not relevant for the user
-
-for sends
-- address created doesn't make sense
-  - instead this is when the withdrawal is initiated
-- get rid of payment type, it's already obvious and not useful additional info
-- get rid of  direction sent
-  - that's also already obvious
-- get rid of operation id, that's not relevant for the user
+have a look at reference.png at the root of the repo. this is the rfq screen the user sees when they're attempting a withdrawal. now take a look at send.png and receive.png. notice how the formatting isn't unified? can we make the send and receive screens for the transaction details look like the rfq screen in terms of styling?
