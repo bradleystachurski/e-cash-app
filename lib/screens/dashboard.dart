@@ -180,7 +180,7 @@ class _DashboardState extends State<Dashboard> {
       }
 
       AppLogger.instance.info(
-        "${_selectedPaymentType} progress: $_recoveryProgress complete: ${progress.$1} total: ${progress.$2}",
+        "$_selectedPaymentType progress: $_recoveryProgress complete: ${progress.$1} total: ${progress.$2}",
       );
     }
   }
