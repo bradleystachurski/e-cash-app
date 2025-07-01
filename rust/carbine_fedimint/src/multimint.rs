@@ -1882,7 +1882,7 @@ impl Multimint {
                                         operation_id: key.operation_id.0.to_vec(),
                                         txid: Some(txid),
                                         block_time,
-                                        deposit_address: Some(format!("{:?}", address)),
+                                        deposit_address: Some(address.assume_checked().to_string()),
                                     })
                                 } else {
                                     None

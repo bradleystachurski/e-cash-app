@@ -396,13 +396,7 @@ class TransactionDetailModal extends StatelessWidget {
   }
 
   Widget _buildDepositAddressRow(BuildContext context, String depositAddress) {
-    // Clean up the debug formatting if present
-    String cleanAddress = depositAddress;
-    if (depositAddress.startsWith('Address(') && depositAddress.endsWith(')')) {
-      cleanAddress = depositAddress.substring(8, depositAddress.length - 1);
-    }
-
-    final truncatedAddress = _formatAddressTruncated(cleanAddress);
+    final truncatedAddress = _formatAddressTruncated(depositAddress);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -448,7 +442,7 @@ class TransactionDetailModal extends StatelessWidget {
                 children: [
                   Flexible(
                     child: Tooltip(
-                      message: cleanAddress,
+                      message: depositAddress,
                       child: Text(
                         truncatedAddress,
                         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
@@ -464,7 +458,7 @@ class TransactionDetailModal extends StatelessWidget {
                   const SizedBox(width: 8),
                   IconButton(
                     onPressed: () {
-                      Clipboard.setData(ClipboardData(text: cleanAddress));
+                      Clipboard.setData(ClipboardData(text: depositAddress));
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('Deposit address copied'),
