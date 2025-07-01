@@ -6,14 +6,11 @@ echo "🚀 Final APK Build for Pixel 6a"
 
 # Only make the minimal changes needed for JDK 21 compatibility
 
-# 1. Update Java version in build.gradle.kts to match our environment
-sed -i 's/JavaVersion.VERSION_11/JavaVersion.VERSION_21/g' android/app/build.gradle.kts
-sed -i 's/VERSION_11/VERSION_21/g' android/app/build.gradle.kts
+# 1. Java version is already set to 21 in build.gradle.kts
+# Skip this step since build.gradle.kts is already properly configured
 
-# 2. Add JDK 21 compatibility flags to gradle.properties
-cat >> android/gradle.properties << 'EOF'
-org.gradle.jvmargs=-Xmx8G -XX:MaxMetaspaceSize=4G -XX:ReservedCodeCacheSize=512m -XX:+HeapDumpOnOutOfMemoryError --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.invoke=ALL-UNNAMED --add-opens=java.prefs/java.util.prefs=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED --add-opens=java.base/java.nio.charset=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED --add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED
-EOF
+# 2. JDK 21 compatibility flags are already configured in gradle.properties
+# Skip this step since gradle.properties is already properly configured
 
 # 3. Ensure native libraries are built
 just build-android-arm

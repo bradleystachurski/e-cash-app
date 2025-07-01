@@ -1,0 +1,102 @@
+# Android APK Build Debugging - Current Status & Next Steps
+
+## Environment
+- OS: NixOS 24.11 (Linux 6.6.66)
+- Flutter: 3.29.3 (from Nix flake)
+- Java: OpenJDK 21.0.7
+- Android SDK: 35.0.1
+- Gradle: 8.10.2
+- Working directory: /home/stachurski/code/fedimint-app
+- Current branch: fix-apk-build
+
+## Problem Statement
+Flutter Android APK build fails with "Gradle task assembleDebug failed with exit code 1" despite Gradle appearing to complete successfully. The app contains Rust native libraries that build correctly, but the APK is never generated.
+
+## Progress Made & Fixes Applied
+
+### ✅ FIXED ISSUES:
+1. **Java Version Consistency**: Updated android/app/build.gradle.kts to use Java 21 (was mixed 8/21)
+   - compileOptions: JavaVersion.VERSION_21 
+   - kotlinOptions.jvmTarget: "21"
+
+2. **JVM Arguments Configuration**: Fixed android/gradle.properties with proper JDK 21 compatibility flags:
+   ```
+   android.useAndroidX=true
+   android.enableJetifier=true
+   org.gradle.jvmargs=-Xmx4G -XX:MaxMetaspaceSize=1G -XX:ReservedCodeCacheSize=512m -XX:+HeapDumpOnOutOfMemoryError --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.invoke=ALL-UNNAMED --add-opens=java.prefs/java.util.prefs=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED --add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED --add-opens=java.base/java.nio.charset=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED --add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED
+   ```
+
+3. **Native Library Building**: Successfully building ARM libraries with `just build-android-arm`
+   - Libraries copied to android/app/src/main/jniLibs/arm64-v8a/
+
+4. **Updated local.properties**: Added java.home path for Gradle:
+   ```
+   java.home=/nix/store/5yii18di89wpxcffk3cihpzfdrzw54gl-openjdk-21.0.7+6/lib/openjdk
+   ```
+
+5. **Fixed final-build.sh**: Removed duplicate JVM args and Java version changes since they're now properly configured
+
+### ✅ VERIFIED WORKING:
+- Flutter doctor shows correct setup
+- Native library build succeeds: `just build-android-arm` 
+- Gradle daemon starts properly with correct JVM settings
+- Build completes quickly (757-815ms) instead of hanging
+- No errors in Gradle daemon logs
+
+## Current Issue
+Despite all fixes, Flutter still reports "Gradle task assembleDebug failed with exit code 1" and no APK is generated in build/app/outputs/. The build completes quickly without specific error messages.
+
+## Key Files Structure
+```
+android/
+├── app/build.gradle.kts (✅ Fixed - Java 21)
+├── gradle.properties (✅ Fixed - JVM args)
+├── local.properties (✅ Fixed - java.home)
+├── settings.gradle.kts (✅ Verified)
+└── build.gradle.kts (✅ Verified)
+
+android/app/src/main/jniLibs/arm64-v8a/ (✅ Native libs present)
+├── libc++_shared.so
+└── libcarbine_fedimint.so
+```
+
+## Commands That Work
+- `nix develop -c flutter doctor -v` ✅
+- `nix develop -c just build-android-arm` ✅ 
+- `cd android && nix develop -c ./gradlew tasks` ✅
+
+## Commands That Fail (exit code 1, no APK generated)
+- `nix develop -c flutter build apk --debug`
+- `nix develop -c flutter build apk --debug --target-platform android-arm64`
+- `cd android && nix develop -c ./gradlew assembleDebug`
+
+## Investigation Needed
+The next Claude instance should:
+
+1. **Get specific Gradle error details** - The exit code 1 is happening but no specific error is shown:
+   ```bash
+   cd android && nix develop -c ./gradlew assembleDebug --console=verbose --warning-mode=all --info --stacktrace
+   ```
+
+2. **Check build outputs** - Verify what's actually being generated:
+   ```bash
+   find android -name "*.apk" -o -name "*.aab" 2>/dev/null
+   ls -la android/app/build/outputs/ 2>/dev/null || echo "outputs dir missing"
+   ```
+
+3. **Try alternative build approaches**:
+   - Release build: `nix develop -c flutter build apk --release --target-platform android-arm64`
+   - Different Gradle tasks: `cd android && nix develop -c ./gradlew build`
+   - Check available tasks: `cd android && nix develop -c ./gradlew tasks --all`
+
+4. **Examine Flutter's Gradle execution** - Run with maximum verbosity:
+   ```bash
+   nix develop -c flutter build apk --debug --verbose
+   ```
+
+5. **Check for missing dependencies or misconfigurations** that prevent APK generation despite successful task completion.
+
+The core configurations are now correct, but something is preventing the actual APK file generation. The issue is likely in task execution order, missing outputs, or a subtle Flutter-Gradle plugin interaction problem.
+
+## Task for Next Claude Instance
+Please continue debugging this Android APK build issue. All major configuration problems have been resolved, but the build still fails to generate an APK. Focus on getting detailed error output from Gradle and determining why the assembleDebug task completes but doesn't produce the expected APK file.

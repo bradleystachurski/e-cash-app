@@ -7,7 +7,11 @@ plugins {
 
 android {
     namespace = "com.example.carbine"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = if (project.hasProperty("flutter.compileSdkVersion")) {
+        project.property("flutter.compileSdkVersion").toString().toInt()
+    } else {
+        34
+    }
     ndkVersion = "27.0.12077973"
 
     compileOptions {
@@ -16,7 +20,7 @@ android {
     }
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_21.toString()
+        jvmTarget = "21"
     }
 
     defaultConfig {
@@ -24,10 +28,26 @@ android {
         applicationId = "com.example.carbine"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
-        versionCode = flutter.versionCode
-        versionName = flutter.versionName
+        minSdk = if (project.hasProperty("flutter.minSdkVersion")) {
+            project.property("flutter.minSdkVersion").toString().toInt()
+        } else {
+            21
+        }
+        targetSdk = if (project.hasProperty("flutter.targetSdkVersion")) {
+            project.property("flutter.targetSdkVersion").toString().toInt()
+        } else {
+            34
+        }
+        versionCode = if (project.hasProperty("flutter.versionCode")) {
+            project.property("flutter.versionCode").toString().toInt()
+        } else {
+            1
+        }
+        versionName = if (project.hasProperty("flutter.versionName")) {
+            project.property("flutter.versionName").toString()
+        } else {
+            "1.0"
+        }
     }
 
     buildTypes {
