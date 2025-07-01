@@ -75,7 +75,7 @@ class TransactionDetailModal extends StatelessWidget {
                 style: IconButton.styleFrom(
                   backgroundColor: Theme.of(
                     context,
-                  ).colorScheme.surfaceVariant.withOpacity(0.3),
+                  ).colorScheme.surfaceContainerHighest.withOpacity(0.3),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(6),
                   ),
@@ -135,13 +135,6 @@ class TransactionDetailModal extends StatelessWidget {
     }
   }
 
-  String _formatTxid(String txid) {
-    if (txid.length > 16) {
-      return '${txid.substring(0, 8)}...${txid.substring(txid.length - 8)}';
-    }
-    return txid;
-  }
-
   String _formatBlockTime(BigInt blockTime) {
     final dateTime = DateTime.fromMillisecondsSinceEpoch(
       blockTime.toInt() * 1000,
@@ -157,6 +150,19 @@ class TransactionDetailModal extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Deposit address for on-chain deposits (first row)
+        if (transaction.module == 'wallet' &&
+            isIncoming &&
+            transaction.depositAddress != null) ...[
+          _buildDepositAddressRow(context, transaction.depositAddress!),
+          const SizedBox(height: 16),
+          Divider(
+            height: 1,
+            color: Theme.of(context).colorScheme.outline.withOpacity(0.1),
+          ),
+          const SizedBox(height: 16),
+        ],
+
         // Created/Initiated timestamp
         _buildDetailRow(
           context,
@@ -337,7 +343,7 @@ class TransactionDetailModal extends StatelessWidget {
                     style: IconButton.styleFrom(
                       backgroundColor: Theme.of(
                         context,
-                      ).colorScheme.surfaceVariant.withOpacity(0.3),
+                      ).colorScheme.surfaceContainerHighest.withOpacity(0.3),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(6),
                       ),
@@ -387,5 +393,114 @@ class TransactionDetailModal extends StatelessWidget {
       return '${txid.substring(0, 6)}...${txid.substring(txid.length - 6)}';
     }
     return txid;
+  }
+
+  Widget _buildDepositAddressRow(BuildContext context, String depositAddress) {
+    // Clean up the debug formatting if present
+    String cleanAddress = depositAddress;
+    if (depositAddress.startsWith('Address(') && depositAddress.endsWith(')')) {
+      cleanAddress = depositAddress.substring(8, depositAddress.length - 1);
+    }
+
+    final truncatedAddress = _formatAddressTruncated(cleanAddress);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Address row
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Left column: Icon and label
+            Expanded(
+              flex: 2,
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.account_balance_wallet,
+                    size: 18,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurfaceVariant.withOpacity(0.7),
+                  ),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      'Deposit Address',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontSize: 14,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(width: 16),
+
+            // Right column: Address value with copy button
+            Expanded(
+              flex: 3,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Flexible(
+                    child: Tooltip(
+                      message: cleanAddress,
+                      child: Text(
+                        truncatedAddress,
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Theme.of(context).colorScheme.onSurface,
+                          fontFamily: 'monospace',
+                        ),
+                        textAlign: TextAlign.right,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: cleanAddress));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Deposit address copied'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.copy_outlined),
+                    iconSize: 18,
+                    padding: const EdgeInsets.all(4),
+                    constraints: const BoxConstraints(
+                      minWidth: 32,
+                      minHeight: 32,
+                    ),
+                    style: IconButton.styleFrom(
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  String _formatAddressTruncated(String address) {
+    if (address.length > 12) {
+      return '${address.substring(0, 6)}...${address.substring(address.length - 6)}';
+    }
+    return address;
   }
 }

@@ -133,6 +133,7 @@ pub struct Transaction {
     pub operation_id: Vec<u8>,
     pub txid: Option<String>,
     pub block_time: Option<u64>,
+    pub deposit_address: Option<String>,
 }
 
 #[derive(Debug, Serialize, Clone, Eq, PartialEq)]
@@ -1767,6 +1768,7 @@ impl Multimint {
                                         operation_id: key.operation_id.0.to_vec(),
                                         txid: None,
                                         block_time: None,
+                                    deposit_address: None,
                                     })
                                 } else {
                                     None
@@ -1783,6 +1785,7 @@ impl Multimint {
                                         operation_id: key.operation_id.0.to_vec(),
                                         txid: None,
                                         block_time: None,
+                                    deposit_address: None,
                                     })
                                 } else {
                                     None
@@ -1830,6 +1833,7 @@ impl Multimint {
                                     operation_id: key.operation_id.0.to_vec(),
                                     txid: None,
                                     block_time: None,
+                                    deposit_address: None,
                                 })
                             }
                             MintOperationMetaVariant::Reissuance { .. } => {
@@ -1845,6 +1849,7 @@ impl Multimint {
                                         operation_id: key.operation_id.0.to_vec(),
                                         txid: None,
                                         block_time: None,
+                                    deposit_address: None,
                                     })
                                 } else {
                                     None
@@ -1855,7 +1860,7 @@ impl Multimint {
                     "wallet" => {
                         let meta = op_log_val.meta::<WalletOperationMeta>();
                         match meta.variant {
-                            WalletOperationMetaVariant::Deposit { .. } => {
+                            WalletOperationMetaVariant::Deposit { address, .. } => {
                                 let outcome = op_log_val.outcome::<DepositStateV2>();
                                 if let Some(DepositStateV2::Claimed { btc_deposited, btc_out_point }) = outcome
                                 {
@@ -1877,6 +1882,7 @@ impl Multimint {
                                         operation_id: key.operation_id.0.to_vec(),
                                         txid: Some(txid),
                                         block_time,
+                                        deposit_address: Some(format!("{:?}", address)),
                                     })
                                 } else {
                                     None
@@ -1902,6 +1908,7 @@ impl Multimint {
                                         operation_id: key.operation_id.0.to_vec(),
                                         txid: Some(txid_str),
                                         block_time,
+                                        deposit_address: None,
                                     })
                                 } else {
                                     None
@@ -1947,6 +1954,7 @@ impl Multimint {
             operation_id: operation_id.0.to_vec(),
             txid: None,
             block_time: None,
+            deposit_address: None,
         };
 
         // First check if the send was over the Lightning network
@@ -1987,6 +1995,7 @@ impl Multimint {
                 operation_id: operation_id.0.to_vec(),
                 txid: None,
                 block_time: None,
+                deposit_address: None,
             }),
             _ => None,
         }
