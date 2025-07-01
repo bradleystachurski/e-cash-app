@@ -48,6 +48,7 @@ class TransactionItem extends StatelessWidget {
         onTap: () {
           showCarbineModalBottomSheet(
             context: context,
+            heightFactor: 0.9,
             child: TransactionDetailModal(transaction: tx, network: network),
           );
         },

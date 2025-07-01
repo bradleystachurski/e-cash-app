@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:carbine/multimint.dart';
 import 'package:carbine/utils.dart';
-import 'package:carbine/theme.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class TransactionDetailModal extends StatelessWidget {
@@ -48,213 +47,79 @@ class TransactionDetailModal extends StatelessWidget {
 
     final amountColor = isIncoming ? Colors.greenAccent : Colors.redAccent;
 
-    return Padding(
+    return Container(
+      width: double.infinity,
+      constraints: const BoxConstraints(maxWidth: 480),
       padding: const EdgeInsets.all(24.0),
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header matching RFQ style
-          CircleAvatar(
-            radius: 30,
-            backgroundColor: amountColor.withOpacity(0.2),
-            child: Icon(moduleIcon, color: amountColor, size: 32),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            formattedAmount,
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: amountColor,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            paymentType,
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-
-          const SizedBox(height: 24),
-
-          // Transaction details matching RFQ style
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surfaceContainer,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: Theme.of(context).colorScheme.primary.withOpacity(0.25),
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                buildDetailRow(
-                  Theme.of(context),
-                  transaction.module == 'wallet' && isIncoming
-                      ? 'Deposit Address Created'
-                      : transaction.module == 'wallet' && !isIncoming
-                      ? 'Withdrawal Initiated'
-                      : 'Created',
-                  formattedDate,
-                ),
-                // Show block inclusion time if available (for on-chain transactions)
-                if (transaction.txid != null && transaction.blockTime != null)
-                  buildDetailRow(
-                    Theme.of(context),
-                    'Block Inclusion Time',
-                    _formatBlockTime(transaction.blockTime!),
-                  ),
-                // Show transaction hash for on-chain transactions
-                if (transaction.txid != null)
-                  _buildTxidDetailRow(
-                    context,
-                    'Transaction Hash',
-                    transaction.txid!,
-                  ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 24),
-
-          // Close button matching RFQ style
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                foregroundColor: Colors.black,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-              ),
-              child: const Text('Close'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTxidDetailRow(BuildContext context, String label, String txid) {
-    final explorerUrl = _getExplorerUrl(txid);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Transaction hash with inline copy button
-        Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          // Header with title and close button
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              SizedBox(
-                width: 100,
-                child: Text(
-                  label,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurface.withOpacity(0.7),
-                    fontWeight: FontWeight.w600,
+              Text(
+                'Transaction Details',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
+              IconButton(
+                onPressed: () => Navigator.of(context).pop(),
+                icon: const Icon(Icons.close),
+                iconSize: 24,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+                style: IconButton.styleFrom(
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.surfaceVariant.withOpacity(0.3),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6),
                   ),
-                ),
-              ),
-              Container(
-                margin: const EdgeInsets.only(right: 8),
-                height: 20,
-                width: 2,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withOpacity(0.7),
-                  borderRadius: BorderRadius.circular(1),
-                ),
-              ),
-              Expanded(
-                child: Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        _formatTxid(txid),
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface,
-                          fontFamily: 'monospace',
-                          height: 1.4,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    InkWell(
-                      onTap: () {
-                        Clipboard.setData(ClipboardData(text: txid));
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Transaction hash copied to clipboard',
-                            ),
-                            duration: Duration(seconds: 2),
-                          ),
-                        );
-                      },
-                      borderRadius: BorderRadius.circular(4),
-                      child: Padding(
-                        padding: const EdgeInsets.all(4),
-                        child: Icon(
-                          Icons.copy_outlined,
-                          size: 16,
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onSurfaceVariant.withOpacity(0.7),
-                        ),
-                      ),
-                    ),
-                  ],
                 ),
               ),
             ],
           ),
-        ),
-        // Explorer link on separate line
-        if (explorerUrl != null) ...[
-          Padding(
-            padding: const EdgeInsets.only(left: 110, bottom: 6),
-            child: InkWell(
-              onTap: () async {
-                final uri = Uri.parse(explorerUrl);
-                if (await canLaunchUrl(uri)) {
-                  await launchUrl(uri, mode: LaunchMode.externalApplication);
-                }
-              },
-              borderRadius: BorderRadius.circular(4),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.open_in_new,
-                      size: 14,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'View on blockchain explorer',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.primary,
-                        decoration: TextDecoration.underline,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
+
+          const SizedBox(height: 24),
+
+          // Amount section with icon
+          Center(
+            child: Column(
+              children: [
+                CircleAvatar(
+                  radius: 30,
+                  backgroundColor: amountColor.withOpacity(0.15),
+                  child: Icon(moduleIcon, color: amountColor, size: 28),
                 ),
-              ),
+                const SizedBox(height: 16),
+                Text(
+                  formattedAmount,
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: amountColor,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  paymentType,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
             ),
           ),
+
+          const SizedBox(height: 32),
+
+          // Transaction details with clean layout
+          _buildDetailSection(context, isIncoming, formattedDate),
         ],
-      ],
+      ),
     );
   }
 
@@ -282,5 +147,245 @@ class TransactionDetailModal extends StatelessWidget {
       blockTime.toInt() * 1000,
     );
     return DateFormat.yMMMd().add_jm().format(dateTime);
+  }
+
+  Widget _buildDetailSection(
+    BuildContext context,
+    bool isIncoming,
+    String formattedDate,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Created/Initiated timestamp
+        _buildDetailRow(
+          context,
+          Icons.schedule,
+          transaction.module == 'wallet' && isIncoming
+              ? 'Deposit Created'
+              : transaction.module == 'wallet' && !isIncoming
+              ? 'Withdrawal Initiated'
+              : 'Created',
+          formattedDate,
+        ),
+
+        // Block inclusion time if available
+        if (transaction.txid != null && transaction.blockTime != null) ...[
+          const SizedBox(height: 16),
+          Divider(
+            height: 1,
+            color: Theme.of(context).colorScheme.outline.withOpacity(0.1),
+          ),
+          const SizedBox(height: 16),
+          _buildDetailRow(
+            context,
+            Icons.check_circle_outline,
+            'Block Inclusion',
+            _formatBlockTime(transaction.blockTime!),
+          ),
+        ],
+
+        // Transaction hash if available
+        if (transaction.txid != null) ...[
+          const SizedBox(height: 16),
+          Divider(
+            height: 1,
+            color: Theme.of(context).colorScheme.outline.withOpacity(0.1),
+          ),
+          const SizedBox(height: 16),
+          _buildTransactionHashRow(context, transaction.txid!),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildDetailRow(
+    BuildContext context,
+    IconData icon,
+    String label,
+    String value,
+  ) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Left column: Icon and label
+        Expanded(
+          flex: 2,
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                size: 18,
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurfaceVariant.withOpacity(0.7),
+              ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  label,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontSize: 14,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(width: 16),
+
+        // Right column: Value
+        Expanded(
+          flex: 3,
+          child: Text(
+            value,
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Theme.of(context).colorScheme.onSurface,
+              fontFamily: 'monospace',
+            ),
+            textAlign: TextAlign.right,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTransactionHashRow(BuildContext context, String txid) {
+    final explorerUrl = _getExplorerUrl(txid);
+    final truncatedHash = _formatTxidTruncated(txid);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Hash row
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Left column: Icon and label
+            Expanded(
+              flex: 2,
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.tag,
+                    size: 18,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurfaceVariant.withOpacity(0.7),
+                  ),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      'Transaction Hash',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontSize: 14,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(width: 16),
+
+            // Right column: Hash value with copy button
+            Expanded(
+              flex: 3,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Flexible(
+                    child: Tooltip(
+                      message: txid,
+                      child: Text(
+                        truncatedHash,
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Theme.of(context).colorScheme.onSurface,
+                          fontFamily: 'monospace',
+                        ),
+                        textAlign: TextAlign.right,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: txid));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Transaction hash copied'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.copy_outlined),
+                    iconSize: 18,
+                    padding: const EdgeInsets.all(4),
+                    constraints: const BoxConstraints(
+                      minWidth: 32,
+                      minHeight: 32,
+                    ),
+                    style: IconButton.styleFrom(
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.surfaceVariant.withOpacity(0.3),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+
+        // Explorer button
+        if (explorerUrl != null) ...[
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerRight,
+            child: OutlinedButton.icon(
+              onPressed: () async {
+                final uri = Uri.parse(explorerUrl);
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                }
+              },
+              icon: const Icon(Icons.open_in_new, size: 16),
+              label: const Text('View on Explorer'),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                side: BorderSide(
+                  color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  String _formatTxidTruncated(String txid) {
+    if (txid.length > 12) {
+      return '${txid.substring(0, 6)}...${txid.substring(txid.length - 6)}';
+    }
+    return txid;
   }
 }
