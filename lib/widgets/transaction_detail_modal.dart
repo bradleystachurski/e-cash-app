@@ -81,11 +81,10 @@ class TransactionDetailModal extends StatelessWidget {
           Container(
             decoration: BoxDecoration(
               border: Border.all(
-                color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
-                width: 1,
+                color: Theme.of(context).colorScheme.outline.withOpacity(0.15),
+                width: 0.5,
               ),
-              borderRadius: BorderRadius.circular(12),
-              color: Theme.of(context).colorScheme.surface,
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Column(
               children: [
@@ -143,34 +142,44 @@ class TransactionDetailModal extends StatelessWidget {
     return Column(
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text(
-                label,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w500,
+              Expanded(
+                child: Text(
+                  label,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurfaceVariant.withOpacity(0.8),
+                    fontWeight: FontWeight.w400,
+                  ),
                 ),
               ),
-              const Spacer(),
-              Text(
-                value,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+              Container(
+                height: 20,
+                width: 1,
+                color: Theme.of(context).colorScheme.outline.withOpacity(0.1),
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+              ),
+              Expanded(
+                child: Text(
+                  value,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
+                  textAlign: TextAlign.right,
+                ),
               ),
             ],
           ),
         ),
         if (showDivider)
           Divider(
-            height: 1,
-            thickness: 1,
-            color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
-            indent: 20,
-            endIndent: 20,
+            height: 0.5,
+            thickness: 0.5,
+            color: Theme.of(context).colorScheme.outline.withOpacity(0.1),
           ),
       ],
     );
@@ -208,53 +217,70 @@ class TransactionDetailModal extends StatelessWidget {
     return Column(
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Text(
-                label,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w500,
+              Expanded(
+                child: Text(
+                  label,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurfaceVariant.withOpacity(0.8),
+                    fontWeight: FontWeight.w400,
+                  ),
                 ),
               ),
-              const Spacer(),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    _formatTxid(txid),
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontFamily: 'monospace',
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    onPressed: () {
-                      Clipboard.setData(ClipboardData(text: txid));
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Transaction hash copied to clipboard'),
-                          duration: Duration(seconds: 2),
+              Container(
+                height: 20,
+                width: 1,
+                color: Theme.of(context).colorScheme.outline.withOpacity(0.1),
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+              ),
+              Expanded(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        _formatTxid(txid),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          fontFamily: 'monospace',
+                          fontWeight: FontWeight.w500,
                         ),
-                      );
-                    },
-                    icon: const Icon(Icons.copy_outlined, size: 18),
-                    tooltip: 'Copy to clipboard',
-                    constraints: const BoxConstraints(),
-                    padding: const EdgeInsets.all(4),
-                    splashRadius: 16,
-                  ),
-                ],
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    InkWell(
+                      onTap: () {
+                        Clipboard.setData(ClipboardData(text: txid));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Transaction hash copied to clipboard',
+                            ),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(4),
+                      child: const Padding(
+                        padding: EdgeInsets.all(4),
+                        child: Icon(Icons.copy_outlined, size: 16),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
         ),
         if (explorerUrl != null) ...[
+          const Divider(height: 0.5, thickness: 0.5, color: Colors.transparent),
           Padding(
-            padding: const EdgeInsets.only(left: 20, right: 20, bottom: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Align(
               alignment: Alignment.centerRight,
               child: InkWell(
@@ -264,11 +290,19 @@ class TransactionDetailModal extends StatelessWidget {
                     await launchUrl(uri, mode: LaunchMode.externalApplication);
                   }
                 },
-                child: Text(
-                  'View on blockchain explorer',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.primary,
-                    decoration: TextDecoration.underline,
+                borderRadius: BorderRadius.circular(4),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 2,
+                  ),
+                  child: Text(
+                    'View on blockchain explorer',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                      decoration: TextDecoration.underline,
+                      fontSize: 12,
+                    ),
                   ),
                 ),
               ),

@@ -1,1 +1,0 @@
-have a look at example.png at the root of the repo. it looks like there's a regression. compare this to reference.png at the root of the repo. let's make the styling look unified
