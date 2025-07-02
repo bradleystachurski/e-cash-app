@@ -16,6 +16,14 @@ def patchedMarkerExt = ".nixos-patched"
 // Tools that need patching
 def toolsToWatch = ["aapt2", "aapt", "zipalign"]
 
+// Statistics tracking
+def patchStats = [
+    binariesFound: 0,
+    binariesPatched: 0,
+    binariesFailed: 0,
+    binariesSkipped: 0
+]
+
 // Function to find the interpreter
 def findInterpreter = {
     def interpreterPath = null
@@ -40,7 +48,11 @@ def findInterpreter = {
 def patchBinary = { File binary ->
     def markerFile = new File(binary.absolutePath + patchedMarkerExt)
     
+    patchStats.binariesFound++
+    
     if (markerFile.exists()) {
+        patchStats.binariesSkipped++
+        println "[NixOS Patcher] Skipping already patched binary: ${binary.name}"
         return // Already patched
     }
     
@@ -50,10 +62,12 @@ def patchBinary = { File binary ->
     def output = process.text
     
     if (!output.contains("ELF")) {
+        patchStats.binariesSkipped++
+        println "[NixOS Patcher] Skipping non-ELF binary: ${binary.name}"
         return // Not an ELF binary
     }
     
-    println "[NixOS Patcher] Found unpached binary: ${binary.absolutePath}"
+    println "[NixOS Patcher] Found unpatched ELF binary: ${binary.absolutePath}"
     
     // Use auto-patchelf if available
     def autoPatchelfCmd = ["auto-patchelf", "--paths", binary.absolutePath, "--ignore-missing=libgcc_s.so.1"]
@@ -63,9 +77,17 @@ def patchBinary = { File binary ->
         
         if (autoPatchProcess.exitValue() == 0) {
             markerFile.createNewFile()
-            println "[NixOS Patcher] Successfully patched ${binary.name} with auto-patchelf"
+            patchStats.binariesPatched++
+            println "[NixOS Patcher] ✓ Successfully patched ${binary.name} with auto-patchelf"
+            return
         } else {
-            println "[NixOS Patcher] auto-patchelf failed, trying manual patching..."
+            // Capture error output for debugging
+            def errorOutput = autoPatchProcess.err.text?.trim()
+            println "[NixOS Patcher] auto-patchelf failed (exit code: ${autoPatchProcess.exitValue()})"
+            if (errorOutput) {
+                println "[NixOS Patcher] auto-patchelf error: ${errorOutput}"
+            }
+            println "[NixOS Patcher] Trying manual patching as fallback..."
             
             // Fallback to manual patchelf
             def interpreter = findInterpreter()
@@ -76,15 +98,28 @@ def patchBinary = { File binary ->
                 
                 if (patchelfProcess.exitValue() == 0) {
                     markerFile.createNewFile()
-                    println "[NixOS Patcher] Successfully patched ${binary.name} with manual patchelf"
+                    patchStats.binariesPatched++
+                    println "[NixOS Patcher] ✓ Successfully patched ${binary.name} with manual patchelf"
+                    return
+                } else {
+                    def patchelfError = patchelfProcess.err.text?.trim()
+                    println "[NixOS Patcher] ✗ Manual patchelf failed (exit code: ${patchelfProcess.exitValue()})"
+                    if (patchelfError) {
+                        println "[NixOS Patcher] patchelf error: ${patchelfError}"
+                    }
                 }
             } else {
-                println "[NixOS Patcher] WARNING: Could not find glibc interpreter"
+                println "[NixOS Patcher] ✗ Could not find glibc interpreter for manual patching"
             }
         }
     } catch (Exception e) {
-        println "[NixOS Patcher] Error patching ${binary.name}: ${e.message}"
+        println "[NixOS Patcher] ✗ Exception during patching of ${binary.name}: ${e.class.simpleName}: ${e.message}"
+        e.printStackTrace()
     }
+    
+    // If we get here, patching failed
+    patchStats.binariesFailed++
+    println "[NixOS Patcher] ✗ Failed to patch ${binary.name}"
 }
 
 // Hook into Gradle's task graph
@@ -123,4 +158,21 @@ allprojects {
     }
 }
 
-println "[NixOS Patcher] Binary patching init script loaded"
+// Add a shutdown hook to print statistics
+gradle.buildFinished {
+    if (patchStats.binariesFound > 0) {
+        println "[NixOS Patcher] === Patching Summary ==="
+        println "[NixOS Patcher] Binaries found: ${patchStats.binariesFound}"
+        println "[NixOS Patcher] Successfully patched: ${patchStats.binariesPatched}"
+        println "[NixOS Patcher] Already patched (skipped): ${patchStats.binariesSkipped}"
+        println "[NixOS Patcher] Failed to patch: ${patchStats.binariesFailed}"
+        
+        if (patchStats.binariesFailed > 0) {
+            println "[NixOS Patcher] ⚠️  WARNING: ${patchStats.binariesFailed} binaries failed to patch - builds may fail"
+        } else if (patchStats.binariesPatched > 0) {
+            println "[NixOS Patcher] ✓ All binaries patched successfully"
+        }
+    }
+}
+
+println "[NixOS Patcher] Binary patching init script loaded (enhanced error handling enabled)"
