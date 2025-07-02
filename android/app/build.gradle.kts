@@ -1,6 +1,6 @@
 plugins {
     id("com.android.application")
-    id("kotlin-android")
+    id("org.jetbrains.kotlin.android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
 }
@@ -10,7 +10,11 @@ android {
     compileSdk = if (project.hasProperty("flutter.compileSdkVersion")) {
         project.property("flutter.compileSdkVersion").toString().toInt()
     } else {
-        34
+        35
+    }
+    
+    configurations.all {
+        exclude(group = "io.flutter", module = "x86_profile")
     }
     ndkVersion = "27.0.12077973"
 
@@ -36,7 +40,7 @@ android {
         targetSdk = if (project.hasProperty("flutter.targetSdkVersion")) {
             project.property("flutter.targetSdkVersion").toString().toInt()
         } else {
-            34
+            35
         }
         versionCode = if (project.hasProperty("flutter.versionCode")) {
             project.property("flutter.versionCode").toString().toInt()
@@ -48,6 +52,7 @@ android {
         } else {
             "1.0"
         }
+        
     }
 
     buildTypes {

@@ -43,6 +43,17 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+/android/app/build/
+/android/.gradle/
+
+# Android APK build artifacts  
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# Our custom files from debugging
+patch-android-binaries.sh
 
 **/target-nix
 **/target

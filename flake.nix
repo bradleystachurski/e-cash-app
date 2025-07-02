@@ -19,8 +19,11 @@
         androidPkgs = {
           android-sdk = android.sdk.${system} (sdkPkgs: with sdkPkgs; [
             # Useful packages for building and testing.
+            build-tools-33-0-1
+            build-tools-34-0-0
             build-tools-35-0-1
             cmdline-tools-latest
+            cmake-3-22-1
             emulator
             platform-tools
             platforms-android-35
@@ -89,8 +92,13 @@
           default = devShells.cross.overrideAttrs (old: {
             nativeBuildInputs = old.nativeBuildInputs or [] ++ [
               pkgs.flutter
+              pkgs.gradle
               pkgs.just
               pkgs.zlib
+              pkgs.curl
+              pkgs.patchelf
+              pkgs.autoPatchelfHook
+              pkgs.file
               flutter_rust_bridge_codegen
               cargo-ndk
               pkgs.cargo-expand
@@ -103,16 +111,46 @@
 	    shellHook = ''
 	      ${old.shellHook or ""}
 
-              export LD_LIBRARY_PATH="${pkgs.zlib}/lib:$LD_LIBRARY_PATH"
+              export LD_LIBRARY_PATH="${pkgs.zlib}/lib:${pkgs.stdenv.cc.cc.lib}/lib:$LD_LIBRARY_PATH"
               export NIXPKGS_ALLOW_UNFREE=1
               export ROOT="$PWD"
               export ANDROID_SDK_ROOT=${androidPkgs.android-sdk}/share/android-sdk
-              # Needs to be writable directory
               export ANDROID_SDK_HOME=$HOME
               export ANDROID_NDK_ROOT=$ANDROID_SDK_ROOT/ndk/27.0.12077973
               export ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/27.0.12077973
-              #export JAVA_HOME=/opt/android-studio/jbr
               export JAVA_HOME=${pkgs.jdk21}/lib/openjdk
+              export FLUTTER_ROOT=${pkgs.flutter}
+              export GRADLE_HOME=${pkgs.gradle}
+              export PATH=${pkgs.gradle}/bin:$PATH
+              
+              export GRADLE_USER_HOME="$HOME/.gradle"
+              export GRADLE_OPTS="-Dorg.gradle.java.home=${pkgs.jdk21}/lib/openjdk -Dorg.gradle.user.home=$HOME/.gradle"
+              
+              # Create writable copy of Flutter SDK to fix includeBuild issue
+              if [ ! -d "$HOME/.flutter-sdk-copy" ]; then
+                echo "Creating writable Flutter SDK copy..."
+                cp -r ${pkgs.flutter} $HOME/.flutter-sdk-copy
+                chmod -R +w $HOME/.flutter-sdk-copy
+              fi
+              export FLUTTER_TOOLS_GRADLE_DIR="$HOME/.flutter-sdk-copy/packages/flutter_tools/gradle"
+              
+              # Add patchelf for binary patching
+              export PATH="${pkgs.patchelf}/bin:$PATH"
+              
+              # Create wrapper function for flutter that patches binaries
+              flutter-patched() {
+                # Run the patch script before executing flutter
+                "$ROOT/patch-android-binaries.sh" 2>/dev/null || true
+                
+                # Execute flutter command
+                flutter "$@"
+                
+                # Patch binaries again after gradle runs (for newly downloaded tools)
+                "$ROOT/patch-android-binaries.sh" 2>/dev/null || true
+              }
+              
+              # Alias for convenience
+              alias flutter-build='flutter-patched'
 
               if [ -d .git ]; then
                 ln -sf "$PWD/scripts/git-hooks/pre-commit.sh" .git/hooks/pre-commit
