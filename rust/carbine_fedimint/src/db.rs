@@ -21,6 +21,7 @@ pub(crate) enum DbKeyPrefix {
     FederationMeta = 0x04,
     BtcPrice = 0x05,
     WithdrawalRfqDetails = 0x06,
+    BlockTimeCache = 0x07,
 }
 
 #[derive(Debug, Clone, Encodable, Decodable, Eq, PartialEq, Hash, Ord, PartialOrd)]
@@ -139,4 +140,83 @@ impl_db_record!(
 impl_db_lookup!(
     key = WithdrawalRfqDetailsKey,
     query_prefix = WithdrawalRfqDetailsKeyPrefix,
+);
+
+#[derive(Debug, Clone, Encodable, Decodable, Eq, PartialEq, Hash, Ord, PartialOrd)]
+pub(crate) struct BlockTimeCacheKey {
+    pub(crate) txid: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Encodable, Decodable, Serialize, Deserialize)]
+pub(crate) struct BlockTimeCacheEntry {
+    pub block_time: Option<u64>, // None for unconfirmed, Some(timestamp) for confirmed
+    pub network: String, // "bitcoin", "signet", "regtest"
+    pub fetched_at: u64, // Unix timestamp when this was cached
+    pub expires_at: u64, // Unix timestamp when this expires (0 = never expires)
+}
+
+impl BlockTimeCacheEntry {
+    pub fn is_expired(&self) -> bool {
+        if self.expires_at == 0 {
+            return false; // Never expires (confirmed transactions)
+        }
+        let now = SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        now > self.expires_at
+    }
+
+    pub fn new_confirmed(block_time: u64, network: String) -> Self {
+        let now = SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        Self {
+            block_time: Some(block_time),
+            network,
+            fetched_at: now,
+            expires_at: 0, // Never expires for confirmed transactions
+        }
+    }
+
+    pub fn new_unconfirmed(network: String, ttl_seconds: u64) -> Self {
+        let now = SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        Self {
+            block_time: None,
+            network,
+            fetched_at: now,
+            expires_at: now + ttl_seconds,
+        }
+    }
+
+    pub fn new_failed(network: String, ttl_seconds: u64) -> Self {
+        let now = SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+        Self {
+            block_time: None,
+            network,
+            fetched_at: now,
+            expires_at: now + ttl_seconds,
+        }
+    }
+}
+
+#[derive(Debug, Encodable, Decodable)]
+pub(crate) struct BlockTimeCacheKeyPrefix;
+
+impl_db_record!(
+    key = BlockTimeCacheKey,
+    value = BlockTimeCacheEntry,
+    db_prefix = DbKeyPrefix::BlockTimeCache,
+);
+
+impl_db_lookup!(
+    key = BlockTimeCacheKey,
+    query_prefix = BlockTimeCacheKeyPrefix,
 );

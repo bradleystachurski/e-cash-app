@@ -57,7 +57,7 @@ use tokio::sync::RwLock;
 
 use crate::{
     anyhow,
-    db::{BtcPrice, BtcPriceKey, FederationMetaKey, WithdrawalRfqDetails, WithdrawalRfqDetailsKey},
+    db::{BtcPrice, BtcPriceKey, FederationMetaKey, WithdrawalRfqDetails, WithdrawalRfqDetailsKey, BlockTimeCacheKey, BlockTimeCacheEntry},
     error_to_flutter, info_to_flutter, FederationConfig, FederationConfigKey,
     FederationConfigKeyPrefix, SeedPhraseAckKey,
 };
@@ -743,7 +743,24 @@ impl Multimint {
         }
     }
 
-    async fn fetch_tx_block_time(&self, txid: &str, network: bitcoin::Network) -> Option<u64> {
+    /// Get block time from cache if available, otherwise return None (for background fetching)
+    async fn get_block_time_cached(&self, txid: &str, network: bitcoin::Network) -> Option<u64> {
+        let network_str = network.to_string();
+        let cache_key = BlockTimeCacheKey { txid: txid.to_string() };
+        
+        let mut dbtx = self.db.begin_transaction().await;
+        if let Some(cached_entry) = dbtx.get_value(&cache_key).await {
+            if !cached_entry.is_expired() && cached_entry.network == network_str {
+                return cached_entry.block_time;
+            }
+        }
+        
+        // No cached data available, return None (will be fetched in background)
+        None
+    }
+
+    /// Fetch block time from external API (for background use)
+    async fn fetch_tx_block_time_external(&self, txid: &str, network: bitcoin::Network) -> Option<u64> {
         let api_url = match network {
             bitcoin::Network::Bitcoin => "https://mempool.space/api".to_string(),
             bitcoin::Network::Signet => "https://mutinynet.com/api".to_string(),
@@ -756,6 +773,7 @@ impl Multimint {
         let client = reqwest::Client::new();
         let resp = client
             .get(format!("{}/tx/{}", api_url, txid))
+            .timeout(std::time::Duration::from_secs(10)) // Add timeout
             .send()
             .await
             .ok()?
@@ -769,6 +787,37 @@ impl Multimint {
         json.get("status")
             .and_then(|s| s.get("block_time"))
             .and_then(|t| t.as_u64())
+    }
+
+    /// Cache block time result in database
+    async fn cache_block_time(&self, txid: &str, network: bitcoin::Network, block_time: Option<u64>) {
+        let network_str = network.to_string();
+        let cache_key = BlockTimeCacheKey { txid: txid.to_string() };
+        
+        let cache_entry = if let Some(bt) = block_time {
+            // Confirmed transaction - cache permanently
+            BlockTimeCacheEntry::new_confirmed(bt, network_str)
+        } else {
+            // Unconfirmed transaction - cache for 10 minutes
+            BlockTimeCacheEntry::new_unconfirmed(network_str, 600)
+        };
+        
+        let mut dbtx = self.db.begin_transaction().await;
+        dbtx.insert_entry(&cache_key, &cache_entry).await;
+        dbtx.commit_tx().await;
+    }
+
+    /// Legacy function for compatibility - now uses cache-first approach
+    async fn fetch_tx_block_time(&self, txid: &str, network: bitcoin::Network) -> Option<u64> {
+        // First try cache
+        if let Some(cached) = self.get_block_time_cached(txid, network).await {
+            return Some(cached);
+        }
+        
+        // If not cached, fetch and cache the result
+        let block_time = self.fetch_tx_block_time_external(txid, network).await;
+        self.cache_block_time(txid, network, block_time).await;
+        block_time
     }
 
     pub async fn get_cached_federation_meta(
@@ -1892,9 +1941,9 @@ impl Multimint {
                                     let amount = Amount::from_sats(btc_deposited.to_sat()).msats;
                                     let txid = btc_out_point.txid.to_string();
                                     
-                                    // Fetch block time from explorer
+                                    // Get block time from cache (immediate load)
                                     let block_time = if let Ok(wallet_module) = client.get_first_module::<WalletClientModule>() {
-                                        self.fetch_tx_block_time(&txid, wallet_module.get_network()).await
+                                        self.get_block_time_cached(&txid, wallet_module.get_network()).await
                                     } else {
                                         None
                                     };
@@ -1923,9 +1972,9 @@ impl Multimint {
                                 if let Some(WithdrawState::Succeeded(txid)) = outcome {
                                     let txid_str = txid.to_string();
                                     
-                                    // Fetch block time from explorer
+                                    // Get block time from cache (immediate load)
                                     let block_time = if let Ok(wallet_module) = client.get_first_module::<WalletClientModule>() {
-                                        self.fetch_tx_block_time(&txid_str, wallet_module.get_network()).await
+                                        self.get_block_time_cached(&txid_str, wallet_module.get_network()).await
                                     } else {
                                         None
                                     };
