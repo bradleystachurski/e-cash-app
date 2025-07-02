@@ -162,10 +162,13 @@ class TransactionDetailModal extends StatelessWidget {
         isIncoming &&
         transaction.depositAddress != null) {
       detailRows.add(
-        buildDetailRow(
+        _buildDetailRowWithCopy(
+          context,
           theme,
           'Deposit Address',
           _formatAddressTruncated(transaction.depositAddress!),
+          transaction.depositAddress!,
+          'Deposit address copied',
         ),
       );
     }
@@ -175,10 +178,13 @@ class TransactionDetailModal extends StatelessWidget {
         !isIncoming &&
         transaction.withdrawalAddress != null) {
       detailRows.add(
-        buildDetailRow(
+        _buildDetailRowWithCopy(
+          context,
           theme,
           'Withdrawal Address',
           _formatAddressTruncated(transaction.withdrawalAddress!),
+          transaction.withdrawalAddress!,
+          'Withdrawal address copied',
         ),
       );
     }
@@ -250,10 +256,13 @@ class TransactionDetailModal extends StatelessWidget {
     // Transaction hash if available
     if (transaction.txid != null) {
       detailRows.add(
-        buildDetailRow(
+        _buildDetailRowWithCopy(
+          context,
           theme,
           'Transaction Hash',
           _formatTxidTruncated(transaction.txid!),
+          transaction.txid!,
+          'Transaction hash copied',
         ),
       );
     }
@@ -279,6 +288,90 @@ class TransactionDetailModal extends StatelessWidget {
       return '${txid.substring(0, 6)}...${txid.substring(txid.length - 6)}';
     }
     return txid;
+  }
+
+  Widget _buildDetailRowWithCopy(
+    BuildContext context,
+    ThemeData theme,
+    String label,
+    String displayValue,
+    String copyValue,
+    String snackBarMessage,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100, // Fixed width to align values nicely
+            child: Text(
+              label,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurface.withOpacity(0.7),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            height: 20,
+            width: 2,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primary.withOpacity(0.7),
+              borderRadius: BorderRadius.circular(1),
+            ),
+          ),
+          Expanded(
+            child: Row(
+              children: [
+                Expanded(
+                  child: Tooltip(
+                    message: copyValue,
+                    child: Text(
+                      displayValue,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurface,
+                        fontFamily: 'monospace',
+                        height: 1.4,
+                      ),
+                      softWrap: true,
+                      maxLines: null,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: copyValue));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(snackBarMessage),
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.copy_outlined),
+                  iconSize: 16,
+                  padding: const EdgeInsets.all(4),
+                  constraints: const BoxConstraints(
+                    minWidth: 28,
+                    minHeight: 28,
+                  ),
+                  style: IconButton.styleFrom(
+                    backgroundColor: theme.colorScheme.surfaceContainerHighest
+                        .withOpacity(0.3),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildExplorerButton(BuildContext context, String txid) {
