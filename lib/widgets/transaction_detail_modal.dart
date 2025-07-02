@@ -179,7 +179,6 @@ class TransactionDetailModal extends StatelessWidget {
         // Created/Initiated timestamp
         _buildDetailRow(
           context,
-          Icons.schedule,
           transaction.module == 'wallet' && isIncoming
               ? 'Deposit Created'
               : transaction.module == 'wallet' && !isIncoming
@@ -198,7 +197,6 @@ class TransactionDetailModal extends StatelessWidget {
           const SizedBox(height: 16),
           _buildDetailRow(
             context,
-            Icons.check_circle_outline,
             'Block Inclusion',
             _formatBlockTime(transaction.blockTime!),
           ),
@@ -220,37 +218,22 @@ class TransactionDetailModal extends StatelessWidget {
 
   Widget _buildDetailRow(
     BuildContext context,
-    IconData icon,
     String label,
     String value,
   ) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Left column: Icon and label
+        // Left column: Label only
         Expanded(
           flex: 2,
-          child: Row(
-            children: [
-              Icon(
-                icon,
-                size: 18,
-                color: Theme.of(
-                  context,
-                ).colorScheme.onSurfaceVariant.withOpacity(0.7),
-              ),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  label,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontSize: 14,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-              ),
-            ],
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontSize: 14,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.w400,
+            ),
           ),
         ),
 
@@ -285,30 +268,16 @@ class TransactionDetailModal extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Left column: Icon and label
+            // Left column: Label only
             Expanded(
               flex: 2,
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.tag,
-                    size: 18,
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurfaceVariant.withOpacity(0.7),
-                  ),
-                  const SizedBox(width: 8),
-                  Flexible(
-                    child: Text(
-                      'Transaction Hash',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontSize: 14,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                  ),
-                ],
+              child: Text(
+                'Transaction Hash',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontSize: 14,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w400,
+                ),
               ),
             ),
 
@@ -418,30 +387,16 @@ class TransactionDetailModal extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Left column: Icon and label
+            // Left column: Label only
             Expanded(
               flex: 2,
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.account_balance_wallet,
-                    size: 18,
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurfaceVariant.withOpacity(0.7),
-                  ),
-                  const SizedBox(width: 8),
-                  Flexible(
-                    child: Text(
-                      'Deposit Address',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontSize: 14,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                  ),
-                ],
+              child: Text(
+                'Deposit Address',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontSize: 14,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w400,
+                ),
               ),
             ),
 
@@ -525,7 +480,6 @@ class TransactionDetailModal extends StatelessWidget {
         if (transaction.feeRateSatsPerVb != null) ...[
           _buildDetailRow(
             context,
-            Icons.speed,
             'Fee Rate',
             '${transaction.feeRateSatsPerVb!.toStringAsFixed(1)} sats/vB',
           ),
@@ -536,7 +490,6 @@ class TransactionDetailModal extends StatelessWidget {
         if (transaction.txSizeVb != null) ...[
           _buildDetailRow(
             context,
-            Icons.straighten,
             'Tx Size',
             '${transaction.txSizeVb!} vB',
           ),
@@ -547,7 +500,6 @@ class TransactionDetailModal extends StatelessWidget {
         if (transaction.feeSats != null) ...[
           _buildDetailRow(
             context,
-            Icons.payments,
             'Fee',
             formatBalance(transaction.feeSats! * BigInt.from(1000), false), // Convert sats to msats for formatting
           ),
@@ -558,7 +510,6 @@ class TransactionDetailModal extends StatelessWidget {
         if (transaction.totalSats != null) ...[
           _buildDetailRow(
             context,
-            Icons.account_balance,
             'Total',
             formatBalance(transaction.totalSats! * BigInt.from(1000), false), // Convert sats to msats for formatting
           ),
@@ -577,30 +528,16 @@ class TransactionDetailModal extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Left column: Icon and label
+            // Left column: Label only
             Expanded(
               flex: 2,
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.send,
-                    size: 18,
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.onSurfaceVariant.withOpacity(0.7),
-                  ),
-                  const SizedBox(width: 8),
-                  Flexible(
-                    child: Text(
-                      'Withdrawal Address',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontSize: 14,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                  ),
-                ],
+              child: Text(
+                'Withdrawal Address',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontSize: 14,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w400,
+                ),
               ),
             ),
 
