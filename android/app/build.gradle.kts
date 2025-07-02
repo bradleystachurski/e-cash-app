@@ -15,6 +15,13 @@ android {
     
     configurations.all {
         exclude(group = "io.flutter", module = "x86_profile")
+        
+        // Pin byte-buddy to a Java 21-compatible version (1.14.3+)
+        // This prevents the Java 24 bytecode issue with version 1.17.5+
+        resolutionStrategy {
+            force("net.bytebuddy:byte-buddy:1.14.18")
+            force("net.bytebuddy:byte-buddy-agent:1.14.18")
+        }
     }
     ndkVersion = "27.0.12077973"
 

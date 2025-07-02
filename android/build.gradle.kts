@@ -3,6 +3,14 @@ allprojects {
         google()
         mavenCentral()
     }
+    
+    // Apply byte-buddy version constraint to all modules to fix Java 24 bytecode issue
+    configurations.all {
+        resolutionStrategy {
+            force("net.bytebuddy:byte-buddy:1.14.18")
+            force("net.bytebuddy:byte-buddy-agent:1.14.18")
+        }
+    }
 }
 
 // Custom build directory causes Flutter to not find APK
