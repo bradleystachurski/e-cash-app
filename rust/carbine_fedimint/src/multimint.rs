@@ -3,7 +3,7 @@ use std::{
     fmt::{self, Display},
     str::FromStr,
     sync::Arc,
-    time::{Duration, UNIX_EPOCH},
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 use anyhow::bail;
@@ -57,7 +57,7 @@ use tokio::sync::RwLock;
 
 use crate::{
     anyhow,
-    db::{BtcPrice, BtcPriceKey, FederationMetaKey},
+    db::{BtcPrice, BtcPriceKey, FederationMetaKey, WithdrawalRfqDetails, WithdrawalRfqDetailsKey},
     error_to_flutter, info_to_flutter, FederationConfig, FederationConfigKey,
     FederationConfigKeyPrefix, SeedPhraseAckKey,
 };
@@ -134,6 +134,11 @@ pub struct Transaction {
     pub txid: Option<String>,
     pub block_time: Option<u64>,
     pub deposit_address: Option<String>,
+    pub withdrawal_address: Option<String>,
+    pub fee_rate_sats_per_vb: Option<f64>,
+    pub tx_size_vb: Option<u32>,
+    pub fee_sats: Option<u64>,
+    pub total_sats: Option<u64>,
 }
 
 #[derive(Debug, Serialize, Clone, Eq, PartialEq)]
@@ -1768,7 +1773,12 @@ impl Multimint {
                                         operation_id: key.operation_id.0.to_vec(),
                                         txid: None,
                                         block_time: None,
-                                    deposit_address: None,
+                                        deposit_address: None,
+                                        withdrawal_address: None,
+                                        fee_rate_sats_per_vb: None,
+                                        tx_size_vb: None,
+                                        fee_sats: None,
+                                        total_sats: None,
                                     })
                                 } else {
                                     None
@@ -1785,7 +1795,12 @@ impl Multimint {
                                         operation_id: key.operation_id.0.to_vec(),
                                         txid: None,
                                         block_time: None,
-                                    deposit_address: None,
+                                        deposit_address: None,
+                                        withdrawal_address: None,
+                                        fee_rate_sats_per_vb: None,
+                                        tx_size_vb: None,
+                                        fee_sats: None,
+                                        total_sats: None,
                                     })
                                 } else {
                                     None
@@ -1834,6 +1849,11 @@ impl Multimint {
                                     txid: None,
                                     block_time: None,
                                     deposit_address: None,
+                                    withdrawal_address: None,
+                                    fee_rate_sats_per_vb: None,
+                                    tx_size_vb: None,
+                                    fee_sats: None,
+                                    total_sats: None,
                                 })
                             }
                             MintOperationMetaVariant::Reissuance { .. } => {
@@ -1849,7 +1869,12 @@ impl Multimint {
                                         operation_id: key.operation_id.0.to_vec(),
                                         txid: None,
                                         block_time: None,
-                                    deposit_address: None,
+                                        deposit_address: None,
+                                        withdrawal_address: None,
+                                        fee_rate_sats_per_vb: None,
+                                        tx_size_vb: None,
+                                        fee_sats: None,
+                                        total_sats: None,
                                     })
                                 } else {
                                     None
@@ -1883,6 +1908,11 @@ impl Multimint {
                                         txid: Some(txid),
                                         block_time,
                                         deposit_address: Some(address.assume_checked().to_string()),
+                                        withdrawal_address: None,
+                                        fee_rate_sats_per_vb: None,
+                                        tx_size_vb: None,
+                                        fee_sats: None,
+                                        total_sats: None,
                                     })
                                 } else {
                                     None
@@ -1899,6 +1929,25 @@ impl Multimint {
                                     } else {
                                         None
                                     };
+
+                                    // Fetch withdrawal RFQ details
+                                    let rfq_key = WithdrawalRfqDetailsKey {
+                                        operation_id: key.operation_id.0.to_vec(),
+                                    };
+                                    let rfq_details = self.db.begin_transaction().await.get_value(&rfq_key).await;
+                                    
+                                    let (withdrawal_address, fee_rate_sats_per_vb, tx_size_vb, fee_sats, total_sats) = 
+                                        if let Some(details) = rfq_details {
+                                            (
+                                                Some(details.withdrawal_address),
+                                                Some(details.fee_rate_sats_per_vb_millis as f64 / 1000.0), // Convert back from millis
+                                                Some(details.tx_size_vb),
+                                                Some(details.fee_sats),
+                                                Some(details.total_sats),
+                                            )
+                                        } else {
+                                            (None, None, None, None, None)
+                                        };
                                     
                                     Some(Transaction {
                                         received: false,
@@ -1909,6 +1958,11 @@ impl Multimint {
                                         txid: Some(txid_str),
                                         block_time,
                                         deposit_address: None,
+                                        withdrawal_address,
+                                        fee_rate_sats_per_vb,
+                                        tx_size_vb,
+                                        fee_sats,
+                                        total_sats,
                                     })
                                 } else {
                                     None
@@ -1955,6 +2009,11 @@ impl Multimint {
             txid: None,
             block_time: None,
             deposit_address: None,
+            withdrawal_address: None,
+            fee_rate_sats_per_vb: None,
+            tx_size_vb: None,
+            fee_sats: None,
+            total_sats: None,
         };
 
         // First check if the send was over the Lightning network
@@ -1996,6 +2055,11 @@ impl Multimint {
                 txid: None,
                 block_time: None,
                 deposit_address: None,
+                withdrawal_address: None,
+                fee_rate_sats_per_vb: None,
+                tx_size_vb: None,
+                fee_sats: None,
+                total_sats: None,
             }),
             _ => None,
         }
@@ -2197,6 +2261,10 @@ impl Multimint {
         address: String,
         amount_sats: u64,
         peg_out_fees: PegOutFees,
+        fee_rate_sats_per_vb: f64,
+        tx_size_vb: u32,
+        fee_sats: u64,
+        total_sats: u64,
     ) -> anyhow::Result<OperationId> {
         let client = self
             .clients
@@ -2208,13 +2276,36 @@ impl Multimint {
         let wallet_module =
             client.get_first_module::<fedimint_wallet_client::WalletClientModule>()?;
 
-        let address = bitcoin::address::Address::from_str(&address)?;
-        let address = address.require_network(wallet_module.get_network())?;
+        let btc_address = bitcoin::address::Address::from_str(&address)?;
+        let btc_address = btc_address.require_network(wallet_module.get_network())?;
         let amount = bitcoin::Amount::from_sat(amount_sats);
 
         let operation_id = wallet_module
-            .withdraw(&address, amount, peg_out_fees, ())
+            .withdraw(&btc_address, amount, peg_out_fees, ())
             .await?;
+
+        // Store withdrawal RFQ details in database
+        let rfq_details = WithdrawalRfqDetails {
+            amount_sats,
+            fee_rate_sats_per_vb_millis: (fee_rate_sats_per_vb * 1000.0) as u64, // Convert to millis
+            tx_size_vb,
+            fee_sats,
+            total_sats,
+            withdrawal_address: address,
+            created_at_millis: SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("Time went backwards")
+                .as_millis() as u64,
+        };
+
+        let rfq_key = WithdrawalRfqDetailsKey {
+            operation_id: operation_id.consensus_encode_to_vec(),
+        };
+
+        let mut dbtx = self.db.begin_transaction().await;
+        dbtx.insert_entry(&rfq_key, &rfq_details).await;
+        dbtx.commit_tx().await;
+
         Ok(operation_id)
     }
 

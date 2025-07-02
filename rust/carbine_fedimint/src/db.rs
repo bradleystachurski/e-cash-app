@@ -20,6 +20,7 @@ pub(crate) enum DbKeyPrefix {
     NWC = 0x03,
     FederationMeta = 0x04,
     BtcPrice = 0x05,
+    WithdrawalRfqDetails = 0x06,
 }
 
 #[derive(Debug, Clone, Encodable, Decodable, Eq, PartialEq, Hash, Ord, PartialOrd)]
@@ -108,4 +109,34 @@ impl_db_record!(
     key = BtcPriceKey,
     value = BtcPrice,
     db_prefix = DbKeyPrefix::BtcPrice,
+);
+
+#[derive(Debug, Clone, Encodable, Decodable, Eq, PartialEq, Hash, Ord, PartialOrd)]
+pub(crate) struct WithdrawalRfqDetailsKey {
+    pub(crate) operation_id: Vec<u8>,
+}
+
+#[derive(Debug, Clone, PartialEq, Encodable, Decodable, Serialize, Deserialize)]
+pub(crate) struct WithdrawalRfqDetails {
+    pub amount_sats: u64,
+    pub fee_rate_sats_per_vb_millis: u64, // Store as millis to avoid f64 encoding issues
+    pub tx_size_vb: u32,
+    pub fee_sats: u64,
+    pub total_sats: u64,
+    pub withdrawal_address: String,
+    pub created_at_millis: u64, // Store as milliseconds since UNIX epoch
+}
+
+#[derive(Debug, Encodable, Decodable)]
+pub(crate) struct WithdrawalRfqDetailsKeyPrefix;
+
+impl_db_record!(
+    key = WithdrawalRfqDetailsKey,
+    value = WithdrawalRfqDetails,
+    db_prefix = DbKeyPrefix::WithdrawalRfqDetails,
+);
+
+impl_db_lookup!(
+    key = WithdrawalRfqDetailsKey,
+    query_prefix = WithdrawalRfqDetailsKeyPrefix,
 );

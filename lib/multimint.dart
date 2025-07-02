@@ -196,6 +196,10 @@ abstract class Multimint implements RustOpaqueInterface {
     required String address,
     required BigInt amountSats,
     required PegOutFees pegOutFees,
+    required double feeRateSatsPerVb,
+    required int txSizeVb,
+    required BigInt feeSats,
+    required BigInt totalSats,
   });
 }
 
@@ -457,6 +461,11 @@ class Transaction {
   final String? txid;
   final BigInt? blockTime;
   final String? depositAddress;
+  final String? withdrawalAddress;
+  final double? feeRateSatsPerVb;
+  final int? txSizeVb;
+  final BigInt? feeSats;
+  final BigInt? totalSats;
 
   const Transaction({
     required this.received,
@@ -467,6 +476,11 @@ class Transaction {
     this.txid,
     this.blockTime,
     this.depositAddress,
+    this.withdrawalAddress,
+    this.feeRateSatsPerVb,
+    this.txSizeVb,
+    this.feeSats,
+    this.totalSats,
   });
 
   @override
@@ -478,7 +492,12 @@ class Transaction {
       operationId.hashCode ^
       txid.hashCode ^
       blockTime.hashCode ^
-      depositAddress.hashCode;
+      depositAddress.hashCode ^
+      withdrawalAddress.hashCode ^
+      feeRateSatsPerVb.hashCode ^
+      txSizeVb.hashCode ^
+      feeSats.hashCode ^
+      totalSats.hashCode;
 
   @override
   bool operator ==(Object other) =>
@@ -492,7 +511,12 @@ class Transaction {
           operationId == other.operationId &&
           txid == other.txid &&
           blockTime == other.blockTime &&
-          depositAddress == other.depositAddress;
+          depositAddress == other.depositAddress &&
+          withdrawalAddress == other.withdrawalAddress &&
+          feeRateSatsPerVb == other.feeRateSatsPerVb &&
+          txSizeVb == other.txSizeVb &&
+          feeSats == other.feeSats &&
+          totalSats == other.totalSats;
 }
 
 class Utxo {

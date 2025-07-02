@@ -372,6 +372,10 @@ abstract class RustLibApi extends BaseApi {
     required String address,
     required BigInt amountSats,
     required PegOutFees pegOutFees,
+    required double feeRateSatsPerVb,
+    required int txSizeVb,
+    required BigInt feeSats,
+    required BigInt totalSats,
   });
 
   Future<List<(FederationSelector, NWCConnectionInfo)>>
@@ -656,6 +660,10 @@ abstract class RustLibApi extends BaseApi {
     required String address,
     required BigInt amountSats,
     required PegOutFees pegOutFees,
+    required double feeRateSatsPerVb,
+    required int txSizeVb,
+    required BigInt feeSats,
+    required BigInt totalSats,
   });
 
   Future<List<String>> crateWordList();
@@ -3068,6 +3076,10 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     required String address,
     required BigInt amountSats,
     required PegOutFees pegOutFees,
+    required double feeRateSatsPerVb,
+    required int txSizeVb,
+    required BigInt feeSats,
+    required BigInt totalSats,
   }) {
     return handler.executeNormal(
       NormalTask(
@@ -3087,6 +3099,10 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             pegOutFees,
             serializer,
           );
+          sse_encode_f_64(feeRateSatsPerVb, serializer);
+          sse_encode_u_32(txSizeVb, serializer);
+          sse_encode_u_64(feeSats, serializer);
+          sse_encode_u_64(totalSats, serializer);
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
@@ -3100,7 +3116,17 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeErrorData: sse_decode_AnyhowException,
         ),
         constMeta: kCrateMultimintMultimintWithdrawToAddressConstMeta,
-        argValues: [that, federationId, address, amountSats, pegOutFees],
+        argValues: [
+          that,
+          federationId,
+          address,
+          amountSats,
+          pegOutFees,
+          feeRateSatsPerVb,
+          txSizeVb,
+          feeSats,
+          totalSats,
+        ],
         apiImpl: this,
       ),
     );
@@ -3115,6 +3141,10 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           "address",
           "amountSats",
           "pegOutFees",
+          "feeRateSatsPerVb",
+          "txSizeVb",
+          "feeSats",
+          "totalSats",
         ],
       );
 
@@ -5458,6 +5488,10 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     required String address,
     required BigInt amountSats,
     required PegOutFees pegOutFees,
+    required double feeRateSatsPerVb,
+    required int txSizeVb,
+    required BigInt feeSats,
+    required BigInt totalSats,
   }) {
     return handler.executeNormal(
       NormalTask(
@@ -5473,6 +5507,10 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             pegOutFees,
             serializer,
           );
+          sse_encode_f_64(feeRateSatsPerVb, serializer);
+          sse_encode_u_32(txSizeVb, serializer);
+          sse_encode_u_64(feeSats, serializer);
+          sse_encode_u_64(totalSats, serializer);
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
@@ -5486,7 +5524,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeErrorData: sse_decode_AnyhowException,
         ),
         constMeta: kCrateWithdrawToAddressConstMeta,
-        argValues: [federationId, address, amountSats, pegOutFees],
+        argValues: [
+          federationId,
+          address,
+          amountSats,
+          pegOutFees,
+          feeRateSatsPerVb,
+          txSizeVb,
+          feeSats,
+          totalSats,
+        ],
         apiImpl: this,
       ),
     );
@@ -5494,7 +5541,16 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
 
   TaskConstMeta get kCrateWithdrawToAddressConstMeta => const TaskConstMeta(
     debugName: "withdraw_to_address",
-    argNames: ["federationId", "address", "amountSats", "pegOutFees"],
+    argNames: [
+      "federationId",
+      "address",
+      "amountSats",
+      "pegOutFees",
+      "feeRateSatsPerVb",
+      "txSizeVb",
+      "feeSats",
+      "totalSats",
+    ],
   );
 
   @override
@@ -6284,6 +6340,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  double dco_decode_box_autoadd_f_64(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as double;
+  }
+
+  @protected
   InvoicePaidEvent dco_decode_box_autoadd_invoice_paid_event(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return dco_decode_invoice_paid_event(raw);
@@ -6317,6 +6379,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   ) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as (FederationId, LightningEventKind);
+  }
+
+  @protected
+  int dco_decode_box_autoadd_u_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as int;
   }
 
   @protected
@@ -6583,6 +6651,18 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  double? dco_decode_opt_box_autoadd_f_64(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_f_64(raw);
+  }
+
+  @protected
+  int? dco_decode_opt_box_autoadd_u_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw == null ? null : dco_decode_box_autoadd_u_32(raw);
+  }
+
+  @protected
   BigInt? dco_decode_opt_box_autoadd_u_64(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw == null ? null : dco_decode_box_autoadd_u_64(raw);
@@ -6779,8 +6859,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   Transaction dco_decode_transaction(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     final arr = raw as List<dynamic>;
-    if (arr.length != 8)
-      throw Exception('unexpected arr length: expect 8 but see ${arr.length}');
+    if (arr.length != 13)
+      throw Exception('unexpected arr length: expect 13 but see ${arr.length}');
     return Transaction(
       received: dco_decode_bool(arr[0]),
       amount: dco_decode_u_64(arr[1]),
@@ -6790,6 +6870,11 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       txid: dco_decode_opt_String(arr[5]),
       blockTime: dco_decode_opt_box_autoadd_u_64(arr[6]),
       depositAddress: dco_decode_opt_String(arr[7]),
+      withdrawalAddress: dco_decode_opt_String(arr[8]),
+      feeRateSatsPerVb: dco_decode_opt_box_autoadd_f_64(arr[9]),
+      txSizeVb: dco_decode_opt_box_autoadd_u_32(arr[10]),
+      feeSats: dco_decode_opt_box_autoadd_u_64(arr[11]),
+      totalSats: dco_decode_opt_box_autoadd_u_64(arr[12]),
     );
   }
 
@@ -7598,6 +7683,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  double sse_decode_box_autoadd_f_64(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_f_64(deserializer));
+  }
+
+  @protected
   InvoicePaidEvent sse_decode_box_autoadd_invoice_paid_event(
     SseDeserializer deserializer,
   ) {
@@ -7641,6 +7732,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     return (sse_decode_record_auto_owned_rust_opaque_flutter_rust_bridgefor_generated_rust_auto_opaque_inner_federation_id_lightning_event_kind(
       deserializer,
     ));
+  }
+
+  @protected
+  int sse_decode_box_autoadd_u_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return (sse_decode_u_32(deserializer));
   }
 
   @protected
@@ -7954,6 +8051,28 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  double? sse_decode_opt_box_autoadd_f_64(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_f_64(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
+  int? sse_decode_opt_box_autoadd_u_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    if (sse_decode_bool(deserializer)) {
+      return (sse_decode_box_autoadd_u_32(deserializer));
+    } else {
+      return null;
+    }
+  }
+
+  @protected
   BigInt? sse_decode_opt_box_autoadd_u_64(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
@@ -8137,6 +8256,11 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     var var_txid = sse_decode_opt_String(deserializer);
     var var_blockTime = sse_decode_opt_box_autoadd_u_64(deserializer);
     var var_depositAddress = sse_decode_opt_String(deserializer);
+    var var_withdrawalAddress = sse_decode_opt_String(deserializer);
+    var var_feeRateSatsPerVb = sse_decode_opt_box_autoadd_f_64(deserializer);
+    var var_txSizeVb = sse_decode_opt_box_autoadd_u_32(deserializer);
+    var var_feeSats = sse_decode_opt_box_autoadd_u_64(deserializer);
+    var var_totalSats = sse_decode_opt_box_autoadd_u_64(deserializer);
     return Transaction(
       received: var_received,
       amount: var_amount,
@@ -8146,6 +8270,11 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       txid: var_txid,
       blockTime: var_blockTime,
       depositAddress: var_depositAddress,
+      withdrawalAddress: var_withdrawalAddress,
+      feeRateSatsPerVb: var_feeRateSatsPerVb,
+      txSizeVb: var_txSizeVb,
+      feeSats: var_feeSats,
+      totalSats: var_totalSats,
     );
   }
 
@@ -9023,6 +9152,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_box_autoadd_f_64(double self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_f_64(self, serializer);
+  }
+
+  @protected
   void sse_encode_box_autoadd_invoice_paid_event(
     InvoicePaidEvent self,
     SseSerializer serializer,
@@ -9073,6 +9208,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       self,
       serializer,
     );
+  }
+
+  @protected
+  void sse_encode_box_autoadd_u_32(int self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    sse_encode_u_32(self, serializer);
   }
 
   @protected
@@ -9351,6 +9492,26 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   @protected
+  void sse_encode_opt_box_autoadd_f_64(double? self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_f_64(self, serializer);
+    }
+  }
+
+  @protected
+  void sse_encode_opt_box_autoadd_u_32(int? self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+
+    sse_encode_bool(self != null, serializer);
+    if (self != null) {
+      sse_encode_box_autoadd_u_32(self, serializer);
+    }
+  }
+
+  @protected
   void sse_encode_opt_box_autoadd_u_64(BigInt? self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
 
@@ -9529,6 +9690,11 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     sse_encode_opt_String(self.txid, serializer);
     sse_encode_opt_box_autoadd_u_64(self.blockTime, serializer);
     sse_encode_opt_String(self.depositAddress, serializer);
+    sse_encode_opt_String(self.withdrawalAddress, serializer);
+    sse_encode_opt_box_autoadd_f_64(self.feeRateSatsPerVb, serializer);
+    sse_encode_opt_box_autoadd_u_32(self.txSizeVb, serializer);
+    sse_encode_opt_box_autoadd_u_64(self.feeSats, serializer);
+    sse_encode_opt_box_autoadd_u_64(self.totalSats, serializer);
   }
 
   @protected
@@ -10215,12 +10381,20 @@ class MultimintImpl extends RustOpaque implements Multimint {
     required String address,
     required BigInt amountSats,
     required PegOutFees pegOutFees,
+    required double feeRateSatsPerVb,
+    required int txSizeVb,
+    required BigInt feeSats,
+    required BigInt totalSats,
   }) => RustLib.instance.api.crateMultimintMultimintWithdrawToAddress(
     that: this,
     federationId: federationId,
     address: address,
     amountSats: amountSats,
     pegOutFees: pegOutFees,
+    feeRateSatsPerVb: feeRateSatsPerVb,
+    txSizeVb: txSizeVb,
+    feeSats: feeSats,
+    totalSats: totalSats,
   );
 }
 

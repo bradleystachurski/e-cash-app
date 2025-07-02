@@ -163,6 +163,19 @@ class TransactionDetailModal extends StatelessWidget {
           const SizedBox(height: 16),
         ],
 
+        // Withdrawal details for on-chain withdrawals
+        if (transaction.module == 'wallet' &&
+            !isIncoming &&
+            transaction.withdrawalAddress != null) ...[
+          _buildWithdrawalDetailsSection(context),
+          const SizedBox(height: 16),
+          Divider(
+            height: 1,
+            color: Theme.of(context).colorScheme.outline.withOpacity(0.1),
+          ),
+          const SizedBox(height: 16),
+        ],
+
         // Created/Initiated timestamp
         _buildDetailRow(
           context,
@@ -496,5 +509,157 @@ class TransactionDetailModal extends StatelessWidget {
       return '${address.substring(0, 6)}...${address.substring(address.length - 6)}';
     }
     return address;
+  }
+
+  Widget _buildWithdrawalDetailsSection(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Withdrawal Address
+        if (transaction.withdrawalAddress != null) ...[
+          _buildWithdrawalAddressRow(context, transaction.withdrawalAddress!),
+          const SizedBox(height: 16),
+        ],
+
+        // Fee Rate
+        if (transaction.feeRateSatsPerVb != null) ...[
+          _buildDetailRow(
+            context,
+            Icons.speed,
+            'Fee Rate',
+            '${transaction.feeRateSatsPerVb!.toStringAsFixed(1)} sats/vB',
+          ),
+          const SizedBox(height: 16),
+        ],
+
+        // Transaction Size
+        if (transaction.txSizeVb != null) ...[
+          _buildDetailRow(
+            context,
+            Icons.straighten,
+            'Tx Size',
+            '${transaction.txSizeVb!} vB',
+          ),
+          const SizedBox(height: 16),
+        ],
+
+        // Fee Amount
+        if (transaction.feeSats != null) ...[
+          _buildDetailRow(
+            context,
+            Icons.payments,
+            'Fee',
+            formatBalance(transaction.feeSats! * BigInt.from(1000), false), // Convert sats to msats for formatting
+          ),
+          const SizedBox(height: 16),
+        ],
+
+        // Total Amount
+        if (transaction.totalSats != null) ...[
+          _buildDetailRow(
+            context,
+            Icons.account_balance,
+            'Total',
+            formatBalance(transaction.totalSats! * BigInt.from(1000), false), // Convert sats to msats for formatting
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildWithdrawalAddressRow(BuildContext context, String withdrawalAddress) {
+    final truncatedAddress = _formatAddressTruncated(withdrawalAddress);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Address row
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Left column: Icon and label
+            Expanded(
+              flex: 2,
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.send,
+                    size: 18,
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurfaceVariant.withOpacity(0.7),
+                  ),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text(
+                      'Withdrawal Address',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontSize: 14,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(width: 16),
+
+            // Right column: Address value with copy button
+            Expanded(
+              flex: 3,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Flexible(
+                    child: Tooltip(
+                      message: withdrawalAddress,
+                      child: Text(
+                        truncatedAddress,
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Theme.of(context).colorScheme.onSurface,
+                          fontFamily: 'monospace',
+                        ),
+                        textAlign: TextAlign.right,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: withdrawalAddress));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Withdrawal address copied'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.copy_outlined),
+                    iconSize: 18,
+                    padding: const EdgeInsets.all(4),
+                    constraints: const BoxConstraints(
+                      minWidth: 32,
+                      minHeight: 32,
+                    ),
+                    style: IconButton.styleFrom(
+                      backgroundColor: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
   }
 }

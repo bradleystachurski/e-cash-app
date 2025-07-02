@@ -172,6 +172,10 @@ class _OnchainSendState extends State<OnchainSend> {
         address: _addressController.text.trim(),
         amountSats: _actualWithdrawalAmount!,
         pegOutFees: _pegOutFees!,
+        feeRateSatsPerVb: _feeRateSatsPerVbyte!,
+        txSizeVb: _txSizeVbytes!,
+        feeSats: _feeAmountSats!,
+        totalSats: _actualWithdrawalAmount! + _feeAmountSats!,
       );
 
       final txid = await awaitWithdraw(

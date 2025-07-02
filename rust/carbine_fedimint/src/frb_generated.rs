@@ -3453,6 +3453,10 @@ fn wire__crate__multimint__Multimint_withdraw_to_address_impl(
             let api_address = <String>::sse_decode(&mut deserializer);
             let api_amount_sats = <u64>::sse_decode(&mut deserializer);
             let api_peg_out_fees = <PegOutFees>::sse_decode(&mut deserializer);
+            let api_fee_rate_sats_per_vb = <f64>::sse_decode(&mut deserializer);
+            let api_tx_size_vb = <u32>::sse_decode(&mut deserializer);
+            let api_fee_sats = <u64>::sse_decode(&mut deserializer);
+            let api_total_sats = <u64>::sse_decode(&mut deserializer);
             deserializer.end();
             move |context| async move {
                 transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
@@ -3493,6 +3497,10 @@ fn wire__crate__multimint__Multimint_withdraw_to_address_impl(
                             api_address,
                             api_amount_sats,
                             api_peg_out_fees,
+                            api_fee_rate_sats_per_vb,
+                            api_tx_size_vb,
+                            api_fee_sats,
+                            api_total_sats,
                         )
                         .await?;
                         Ok(output_ok)
@@ -6772,6 +6780,10 @@ fn wire__crate__withdraw_to_address_impl(
             let api_address = <String>::sse_decode(&mut deserializer);
             let api_amount_sats = <u64>::sse_decode(&mut deserializer);
             let api_peg_out_fees = <PegOutFees>::sse_decode(&mut deserializer);
+            let api_fee_rate_sats_per_vb = <f64>::sse_decode(&mut deserializer);
+            let api_tx_size_vb = <u32>::sse_decode(&mut deserializer);
+            let api_fee_sats = <u64>::sse_decode(&mut deserializer);
+            let api_total_sats = <u64>::sse_decode(&mut deserializer);
             deserializer.end();
             move |context| async move {
                 transform_result_sse::<_, flutter_rust_bridge::for_generated::anyhow::Error>(
@@ -6800,6 +6812,10 @@ fn wire__crate__withdraw_to_address_impl(
                             api_address,
                             api_amount_sats,
                             api_peg_out_fees,
+                            api_fee_rate_sats_per_vb,
+                            api_tx_size_vb,
+                            api_fee_sats,
+                            api_total_sats,
                         )
                         .await?;
                         Ok(output_ok)
@@ -7720,6 +7736,28 @@ impl SseDecode for Option<String> {
     }
 }
 
+impl SseDecode for Option<f64> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<f64>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
+impl SseDecode for Option<u32> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
+        if (<bool>::sse_decode(deserializer)) {
+            return Some(<u32>::sse_decode(deserializer));
+        } else {
+            return None;
+        }
+    }
+}
+
 impl SseDecode for Option<u64> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_decode(deserializer: &mut flutter_rust_bridge::for_generated::SseDeserializer) -> Self {
@@ -7861,6 +7899,11 @@ impl SseDecode for crate::multimint::Transaction {
         let mut var_txid = <Option<String>>::sse_decode(deserializer);
         let mut var_blockTime = <Option<u64>>::sse_decode(deserializer);
         let mut var_depositAddress = <Option<String>>::sse_decode(deserializer);
+        let mut var_withdrawalAddress = <Option<String>>::sse_decode(deserializer);
+        let mut var_feeRateSatsPerVb = <Option<f64>>::sse_decode(deserializer);
+        let mut var_txSizeVb = <Option<u32>>::sse_decode(deserializer);
+        let mut var_feeSats = <Option<u64>>::sse_decode(deserializer);
+        let mut var_totalSats = <Option<u64>>::sse_decode(deserializer);
         return crate::multimint::Transaction {
             received: var_received,
             amount: var_amount,
@@ -7870,6 +7913,11 @@ impl SseDecode for crate::multimint::Transaction {
             txid: var_txid,
             block_time: var_blockTime,
             deposit_address: var_depositAddress,
+            withdrawal_address: var_withdrawalAddress,
+            fee_rate_sats_per_vb: var_feeRateSatsPerVb,
+            tx_size_vb: var_txSizeVb,
+            fee_sats: var_feeSats,
+            total_sats: var_totalSats,
         };
     }
 }
@@ -9058,6 +9106,11 @@ impl flutter_rust_bridge::IntoDart for crate::multimint::Transaction {
             self.txid.into_into_dart().into_dart(),
             self.block_time.into_into_dart().into_dart(),
             self.deposit_address.into_into_dart().into_dart(),
+            self.withdrawal_address.into_into_dart().into_dart(),
+            self.fee_rate_sats_per_vb.into_into_dart().into_dart(),
+            self.tx_size_vb.into_into_dart().into_dart(),
+            self.fee_sats.into_into_dart().into_dart(),
+            self.total_sats.into_into_dart().into_dart(),
         ]
         .into_dart()
     }
@@ -9817,6 +9870,26 @@ impl SseEncode for Option<String> {
     }
 }
 
+impl SseEncode for Option<f64> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <f64>::sse_encode(value, serializer);
+        }
+    }
+}
+
+impl SseEncode for Option<u32> {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
+        <bool>::sse_encode(self.is_some(), serializer);
+        if let Some(value) = self {
+            <u32>::sse_encode(value, serializer);
+        }
+    }
+}
+
 impl SseEncode for Option<u64> {
     // Codec=Sse (Serialization based), see doc to use other codecs
     fn sse_encode(self, serializer: &mut flutter_rust_bridge::for_generated::SseSerializer) {
@@ -9938,6 +10011,11 @@ impl SseEncode for crate::multimint::Transaction {
         <Option<String>>::sse_encode(self.txid, serializer);
         <Option<u64>>::sse_encode(self.block_time, serializer);
         <Option<String>>::sse_encode(self.deposit_address, serializer);
+        <Option<String>>::sse_encode(self.withdrawal_address, serializer);
+        <Option<f64>>::sse_encode(self.fee_rate_sats_per_vb, serializer);
+        <Option<u32>>::sse_encode(self.tx_size_vb, serializer);
+        <Option<u64>>::sse_encode(self.fee_sats, serializer);
+        <Option<u64>>::sse_encode(self.total_sats, serializer);
     }
 }
 

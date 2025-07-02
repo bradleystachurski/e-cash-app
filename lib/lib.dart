@@ -241,11 +241,19 @@ Future<OperationId> withdrawToAddress({
   required String address,
   required BigInt amountSats,
   required PegOutFees pegOutFees,
+  required double feeRateSatsPerVb,
+  required int txSizeVb,
+  required BigInt feeSats,
+  required BigInt totalSats,
 }) => RustLib.instance.api.crateWithdrawToAddress(
   federationId: federationId,
   address: address,
   amountSats: amountSats,
   pegOutFees: pegOutFees,
+  feeRateSatsPerVb: feeRateSatsPerVb,
+  txSizeVb: txSizeVb,
+  feeSats: feeSats,
+  totalSats: totalSats,
 );
 
 Future<String> awaitWithdraw({

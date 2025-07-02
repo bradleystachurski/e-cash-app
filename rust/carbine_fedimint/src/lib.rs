@@ -537,10 +537,23 @@ pub async fn withdraw_to_address(
     address: String,
     amount_sats: u64,
     peg_out_fees: PegOutFees,
+    fee_rate_sats_per_vb: f64,
+    tx_size_vb: u32,
+    fee_sats: u64,
+    total_sats: u64,
 ) -> anyhow::Result<OperationId> {
     let multimint = get_multimint();
     multimint
-        .withdraw_to_address(federation_id, address, amount_sats, peg_out_fees)
+        .withdraw_to_address(
+            federation_id, 
+            address, 
+            amount_sats, 
+            peg_out_fees,
+            fee_rate_sats_per_vb,
+            tx_size_vb,
+            fee_sats,
+            total_sats,
+        )
         .await
 }
 
