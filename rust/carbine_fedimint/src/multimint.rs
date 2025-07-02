@@ -1,8 +1,8 @@
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, VecDeque},
     fmt::{self, Display},
     str::FromStr,
-    sync::Arc,
+    sync::{Arc, Mutex},
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
@@ -107,6 +107,7 @@ pub struct Multimint {
     clients: Arc<RwLock<BTreeMap<FederationId, ClientHandleArc>>>,
     task_group: TaskGroup,
     pegin_address_monitor_tx: UnboundedSender<(FederationId, TweakIdx)>,
+    block_time_fetcher: Arc<BlockTimeFetcher>,
 }
 
 #[derive(Debug, Serialize, Encodable, Decodable, Clone)]
@@ -247,6 +248,192 @@ pub enum LightningSendOutcome {
     Failure,
 }
 
+#[derive(Debug, Clone)]
+struct PendingFetch {
+    txid: String,
+    network: bitcoin::Network,
+    priority: FetchPriority,
+    attempts: u32,
+    last_attempt: Option<SystemTime>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum FetchPriority {
+    Low = 0,    // Background refresh
+    Normal = 1, // Regular transaction
+    High = 2,   // Visible/active transaction
+}
+
+struct BlockTimeFetcher {
+    pending_queue: Arc<Mutex<VecDeque<PendingFetch>>>,
+    client: reqwest::Client,
+    db: Database,
+    is_running: Arc<Mutex<bool>>,
+}
+
+impl BlockTimeFetcher {
+    fn new(db: Database) -> Self {
+        Self {
+            pending_queue: Arc::new(Mutex::new(VecDeque::new())),
+            client: reqwest::Client::builder()
+                .timeout(Duration::from_secs(10))
+                .build()
+                .expect("Failed to create HTTP client"),
+            db,
+            is_running: Arc::new(Mutex::new(false)),
+        }
+    }
+
+    fn queue_fetch(&self, txid: String, network: bitcoin::Network, priority: FetchPriority) {
+        let mut queue = self.pending_queue.lock().unwrap();
+        
+        // Check if already queued (deduplication)
+        if queue.iter().any(|fetch| fetch.txid == txid) {
+            return;
+        }
+        
+        let fetch = PendingFetch {
+            txid,
+            network,
+            priority,
+            attempts: 0,
+            last_attempt: None,
+        };
+        
+        // Insert based on priority (high priority first)
+        let insert_pos = queue
+            .iter()
+            .position(|f| f.priority < priority)
+            .unwrap_or(queue.len());
+        
+        queue.insert(insert_pos, fetch);
+    }
+
+    async fn start_background_fetching(&self) {
+        let mut is_running = self.is_running.lock().unwrap();
+        if *is_running {
+            return; // Already running
+        }
+        *is_running = true;
+        drop(is_running);
+
+        let queue = Arc::clone(&self.pending_queue);
+        let client = self.client.clone();
+        let db = self.db.clone();
+        let is_running = Arc::clone(&self.is_running);
+
+        tokio::spawn(async move {
+            loop {
+                let fetch_item = {
+                    let mut queue_guard = queue.lock().unwrap();
+                    queue_guard.pop_front()
+                };
+
+                if let Some(mut fetch) = fetch_item {
+                    // Check if we should retry (exponential backoff)
+                    if let Some(last_attempt) = fetch.last_attempt {
+                        let backoff_duration = Duration::from_secs(2_u64.pow(fetch.attempts.min(6)));
+                        if last_attempt.elapsed().unwrap_or_default() < backoff_duration {
+                            // Put back in queue for later
+                            {
+                                let mut queue_guard = queue.lock().unwrap();
+                                queue_guard.push_back(fetch);
+                            } // Drop guard before await
+                            tokio::time::sleep(Duration::from_millis(100)).await;
+                            continue;
+                        }
+                    }
+
+                    fetch.attempts += 1;
+                    fetch.last_attempt = Some(SystemTime::now());
+
+                    // Attempt to fetch block time
+                    if let Some(block_time) = Self::fetch_block_time_external(&client, &fetch.txid, fetch.network).await {
+                        // Cache the result
+                        Self::cache_block_time_result(&db, &fetch.txid, fetch.network, Some(block_time)).await;
+                        
+                        // TODO: Notify UI of update
+                        // This will be implemented in the next step
+                    } else if fetch.attempts < 3 {
+                        // Retry up to 3 times
+                        {
+                            let mut queue_guard = queue.lock().unwrap();
+                            queue_guard.push_back(fetch);
+                        } // Drop guard before next iteration
+                    } else {
+                        // Failed after 3 attempts, cache failure
+                        Self::cache_block_time_result(&db, &fetch.txid, fetch.network, None).await;
+                    }
+                } else {
+                    // Queue is empty, wait a bit before checking again
+                    tokio::time::sleep(Duration::from_secs(1)).await;
+                    
+                    // Check if we should stop the background task
+                    let is_empty = {
+                        let queue_guard = queue.lock().unwrap();
+                        queue_guard.is_empty()
+                    }; // Drop guard before await
+                    
+                    if is_empty {
+                        let mut is_running_guard = is_running.lock().unwrap();
+                        *is_running_guard = false;
+                        break;
+                    }
+                }
+            }
+        });
+    }
+
+    async fn fetch_block_time_external(
+        client: &reqwest::Client,
+        txid: &str,
+        network: bitcoin::Network,
+    ) -> Option<u64> {
+        let api_url = match network {
+            bitcoin::Network::Bitcoin => "https://mempool.space/api",
+            bitcoin::Network::Signet => "https://mutinynet.com/api",
+            bitcoin::Network::Regtest => "http://localhost:22413",
+            _ => return None,
+        };
+
+        let resp = client
+            .get(format!("{}/tx/{}", api_url, txid))
+            .send()
+            .await
+            .ok()?
+            .error_for_status()
+            .ok()?
+            .text()
+            .await
+            .ok()?;
+
+        let json: serde_json::Value = serde_json::from_str(&resp).ok()?;
+        json.get("status")
+            .and_then(|s| s.get("block_time"))
+            .and_then(|t| t.as_u64())
+    }
+
+    async fn cache_block_time_result(
+        db: &Database,
+        txid: &str,
+        network: bitcoin::Network,
+        block_time: Option<u64>,
+    ) {
+        let network_str = network.to_string();
+        let cache_key = BlockTimeCacheKey { txid: txid.to_string() };
+        
+        let cache_entry = if let Some(bt) = block_time {
+            BlockTimeCacheEntry::new_confirmed(bt, network_str)
+        } else {
+            BlockTimeCacheEntry::new_failed(network_str, 300) // 5 minute TTL for failures
+        };
+        
+        let mut dbtx = db.begin_transaction().await;
+        dbtx.insert_entry(&cache_key, &cache_entry).await;
+        dbtx.commit_tx().await;
+    }
+}
+
 impl Multimint {
     pub async fn new(db: Database, creation_type: MultimintCreation) -> anyhow::Result<Self> {
         let mnemonic = match creation_type {
@@ -287,12 +474,13 @@ impl Multimint {
             unbounded_channel::<(FederationId, TweakIdx)>();
 
         let mut multimint = Self {
-            db,
+            db: db.clone(),
             mnemonic,
             modules,
             clients: clients.clone(),
             task_group: TaskGroup::new(),
             pegin_address_monitor_tx: pegin_address_monitor_tx.clone(),
+            block_time_fetcher: Arc::new(BlockTimeFetcher::new(db)),
         };
 
         multimint.load_clients().await?;
@@ -807,6 +995,31 @@ impl Multimint {
         dbtx.commit_tx().await;
     }
 
+    /// Queue missing block times for background fetching
+    fn queue_missing_block_times(&self, transactions: &[Transaction]) {
+        for transaction in transactions {
+            if let Some(txid) = &transaction.txid {
+                if transaction.block_time.is_none() {
+                    // Determine network from first available wallet module
+                    // This is a simplified approach - in practice you might want to store network with transaction
+                    let network = bitcoin::Network::Signet; // Default to signet for now
+                    
+                    self.block_time_fetcher.queue_fetch(
+                        txid.clone(),
+                        network,
+                        FetchPriority::Normal,
+                    );
+                }
+            }
+        }
+        
+        // Start background fetching if not already running
+        let fetcher = Arc::clone(&self.block_time_fetcher);
+        tokio::spawn(async move {
+            fetcher.start_background_fetching().await;
+        });
+    }
+
     /// Legacy function for compatibility - now uses cache-first approach
     async fn fetch_tx_block_time(&self, txid: &str, network: bitcoin::Network) -> Option<u64> {
         // First try cache
@@ -814,10 +1027,21 @@ impl Multimint {
             return Some(cached);
         }
         
-        // If not cached, fetch and cache the result
-        let block_time = self.fetch_tx_block_time_external(txid, network).await;
-        self.cache_block_time(txid, network, block_time).await;
-        block_time
+        // If not cached, queue for background fetching instead of blocking
+        self.block_time_fetcher.queue_fetch(
+            txid.to_string(),
+            network,
+            FetchPriority::High, // High priority for immediate requests
+        );
+        
+        // Start background fetching
+        let fetcher = Arc::clone(&self.block_time_fetcher);
+        tokio::spawn(async move {
+            fetcher.start_background_fetching().await;
+        });
+        
+        // Return None for immediate load, block time will be updated in background
+        None
     }
 
     pub async fn get_cached_federation_meta(
@@ -2034,6 +2258,9 @@ impl Multimint {
             // Update the pagination key to the last item in this page
             next_key = page.last().map(|(key, _)| key.clone());
         }
+
+        // Queue missing block times for background fetching
+        self.queue_missing_block_times(&collected);
 
         collected
     }
