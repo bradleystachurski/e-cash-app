@@ -126,6 +126,10 @@
               export GRADLE_USER_HOME="$HOME/.gradle"
               export GRADLE_OPTS="-Dorg.gradle.java.home=${pkgs.jdk21}/lib/openjdk -Dorg.gradle.user.home=$HOME/.gradle"
               
+              # Create gradle init directory and copy our init script
+              mkdir -p "$HOME/.gradle/init.d"
+              cp "$ROOT/android/gradle-init-patch-binaries.gradle" "$HOME/.gradle/init.d/"
+              
               # Create writable copy of Flutter SDK to fix includeBuild issue
               if [ ! -d "$ROOT/.flutter-sdk-local" ]; then
                 echo "Creating writable Flutter SDK copy..."
@@ -134,23 +138,8 @@
               fi
               export FLUTTER_TOOLS_GRADLE_DIR="$ROOT/.flutter-sdk-local/packages/flutter_tools/gradle"
               
-              # Add patchelf for binary patching
+              # Add patchelf for binary patching (still needed by the Gradle init script)
               export PATH="${pkgs.patchelf}/bin:$PATH"
-              
-              # Create wrapper function for flutter that patches binaries
-              flutter-patched() {
-                # Run the patch script before executing flutter
-                "$ROOT/patch-android-binaries.sh" 2>/dev/null || true
-                
-                # Execute flutter command
-                flutter "$@"
-                
-                # Patch binaries again after gradle runs (for newly downloaded tools)
-                "$ROOT/patch-android-binaries.sh" 2>/dev/null || true
-              }
-              
-              # Alias for convenience
-              alias flutter-build='flutter-patched'
 
               if [ -d .git ]; then
                 ln -sf "$PWD/scripts/git-hooks/pre-commit.sh" .git/hooks/pre-commit

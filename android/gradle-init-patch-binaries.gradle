@@ -1,0 +1,126 @@
+// Gradle init script to automatically patch Android binaries for NixOS compatibility
+// This script runs for every Gradle invocation and patches binaries after they're downloaded
+
+import java.nio.file.Files
+import java.nio.file.Paths
+
+def isNixOS = System.getenv("NIX_PROFILES") != null || new File("/nix/store").exists()
+
+if (!isNixOS) {
+    return // Only run on NixOS
+}
+
+def gradleCacheDir = new File(System.getProperty("user.home"), ".gradle/caches")
+def patchedMarkerExt = ".nixos-patched"
+
+// Tools that need patching
+def toolsToWatch = ["aapt2", "aapt", "zipalign"]
+
+// Function to find the interpreter
+def findInterpreter = {
+    def interpreterPath = null
+    def nixStoreDir = new File("/nix/store")
+    
+    if (nixStoreDir.exists()) {
+        nixStoreDir.eachDir { dir ->
+            if (dir.name.contains("glibc")) {
+                def interpreter = new File(dir, "lib/ld-linux-x86-64.so.2")
+                if (interpreter.exists()) {
+                    interpreterPath = interpreter.absolutePath
+                    return true // Stop searching
+                }
+            }
+        }
+    }
+    
+    return interpreterPath
+}
+
+// Function to patch a binary
+def patchBinary = { File binary ->
+    def markerFile = new File(binary.absolutePath + patchedMarkerExt)
+    
+    if (markerFile.exists()) {
+        return // Already patched
+    }
+    
+    // Check if it's an ELF binary
+    def process = ["file", binary.absolutePath].execute()
+    process.waitFor()
+    def output = process.text
+    
+    if (!output.contains("ELF")) {
+        return // Not an ELF binary
+    }
+    
+    println "[NixOS Patcher] Found unpached binary: ${binary.absolutePath}"
+    
+    // Use auto-patchelf if available
+    def autoPatchelfCmd = ["auto-patchelf", "--paths", binary.absolutePath, "--ignore-missing=libgcc_s.so.1"]
+    try {
+        def autoPatchProcess = autoPatchelfCmd.execute()
+        autoPatchProcess.waitFor()
+        
+        if (autoPatchProcess.exitValue() == 0) {
+            markerFile.createNewFile()
+            println "[NixOS Patcher] Successfully patched ${binary.name} with auto-patchelf"
+        } else {
+            println "[NixOS Patcher] auto-patchelf failed, trying manual patching..."
+            
+            // Fallback to manual patchelf
+            def interpreter = findInterpreter()
+            if (interpreter) {
+                def patchelfCmd = ["patchelf", "--set-interpreter", interpreter, binary.absolutePath]
+                def patchelfProcess = patchelfCmd.execute()
+                patchelfProcess.waitFor()
+                
+                if (patchelfProcess.exitValue() == 0) {
+                    markerFile.createNewFile()
+                    println "[NixOS Patcher] Successfully patched ${binary.name} with manual patchelf"
+                }
+            } else {
+                println "[NixOS Patcher] WARNING: Could not find glibc interpreter"
+            }
+        }
+    } catch (Exception e) {
+        println "[NixOS Patcher] Error patching ${binary.name}: ${e.message}"
+    }
+}
+
+// Hook into Gradle's task graph
+gradle.taskGraph.whenReady { taskGraph ->
+    // Scan for binaries that need patching before any task execution
+    if (gradleCacheDir.exists()) {
+        toolsToWatch.each { toolName ->
+            gradleCacheDir.traverse(type: groovy.io.FileType.FILES, nameFilter: { it == toolName }) { file ->
+                if (file.canExecute()) {
+                    patchBinary(file)
+                }
+            }
+        }
+    }
+}
+
+// Also patch after dependency resolution
+allprojects {
+    afterEvaluate { project ->
+        project.configurations.all { configuration ->
+            configuration.incoming.afterResolve {
+                // Give Gradle time to extract archives
+                Thread.sleep(500)
+                
+                if (gradleCacheDir.exists()) {
+                    toolsToWatch.each { toolName ->
+                        gradleCacheDir.traverse(type: groovy.io.FileType.FILES, nameFilter: { it == toolName }) { file ->
+                            if (file.canExecute()) {
+                                patchBinary(file)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+println "[NixOS Patcher] Binary patching init script loaded"
