@@ -55,6 +55,9 @@ app.*.map.json
 # Our custom files from debugging
 patch-android-binaries.sh
 
+# Local Flutter SDK copy (writable for Nix build)
+.flutter-sdk-local/
+
 **/target-nix
 **/target
 **/*.so

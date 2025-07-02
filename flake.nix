@@ -127,12 +127,12 @@
               export GRADLE_OPTS="-Dorg.gradle.java.home=${pkgs.jdk21}/lib/openjdk -Dorg.gradle.user.home=$HOME/.gradle"
               
               # Create writable copy of Flutter SDK to fix includeBuild issue
-              if [ ! -d "$HOME/.flutter-sdk-copy" ]; then
+              if [ ! -d "$ROOT/.flutter-sdk-local" ]; then
                 echo "Creating writable Flutter SDK copy..."
-                cp -r ${pkgs.flutter} $HOME/.flutter-sdk-copy
-                chmod -R +w $HOME/.flutter-sdk-copy
+                cp -r ${pkgs.flutter} "$ROOT/.flutter-sdk-local"
+                chmod -R +w "$ROOT/.flutter-sdk-local"
               fi
-              export FLUTTER_TOOLS_GRADLE_DIR="$HOME/.flutter-sdk-copy/packages/flutter_tools/gradle"
+              export FLUTTER_TOOLS_GRADLE_DIR="$ROOT/.flutter-sdk-local/packages/flutter_tools/gradle"
               
               # Add patchelf for binary patching
               export PATH="${pkgs.patchelf}/bin:$PATH"
