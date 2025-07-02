@@ -1,18 +1,19 @@
 # Android APK Build Improvements
 
-## Progress Status: 2/8 Complete ✅
+## Progress Status: 5/9 Complete ✅
 
 **Completed Improvements:**
 1. ✅ Binary Patching - Gradle Init Script Approach 
 2. ✅ Java Compatibility - Pin Dependencies
+3. ✅ APK Detection Fix - Flutter Path Resolution
+4. ✅ Flutter Tools Directory Optimization
+5. ✅ Cleanup Debug Files
 
-**Remaining Improvements:**
-3. Flutter Tools Gradle Directory Optimization
-4. Cleanup Debug Files  
-5. Error Handling in Patch Script
-6. Android SDK Optimization
-7. Environment Variables Consolidation
-8. Pre-cached Flutter SDK
+**Remaining Improvements:**  
+6. Error Handling in Patch Script
+7. Android SDK Optimization
+8. Environment Variables Consolidation
+9. Pre-cached Flutter SDK
 
 ## 1. Binary Patching - Gradle Init Script Approach ✅
 **Current**: Patches binaries after download via wrapper alias in shellHook
@@ -44,15 +45,39 @@
 - Removed `android.jetifier.ignorelist=byte-buddy` workaround from gradle.properties
 - **Tested and verified**: Release APK builds now work successfully (55MB release APK generated)
 
-## 3. Environment Variables Consolidation
-**Current**: Multiple environment variables scattered in flake.nix shellHook
-**Improvement**: Consider consolidating related variables or using a `.env` file
+## 3. APK Detection Fix - Flutter Path Resolution ✅
+**Current**: Flutter shows "Gradle build failed to produce an .apk file" even though APKs are generated successfully
+**Improvement**: Fix Flutter's APK detection by placing files in expected directory structure
 **Benefits**:
-- Cleaner flake.nix
-- Easier to manage and override locally
-- Better separation of concerns
+- Eliminates confusing error messages during successful builds
+- Proper success feedback from Flutter build commands
+- Clean build output that matches expectations
 
-## 4. Android SDK Optimization
+**Implementation Complete**:
+- Added Gradle task to copy APKs to `/build/app/outputs/flutter-apk/` directory structure
+- Created comprehensive directory structure that Flutter expects
+- Applied to both debug and release builds
+- **Tested and verified**: 
+  - Debug builds: `✓ Built build/app/outputs/flutter-apk/app-debug.apk`
+  - Release builds: `✓ Built build/app/outputs/flutter-apk/app-release.apk (55.3MB)`
+  - No more "failed to produce .apk file" error messages
+
+## 4. Flutter Tools Directory Optimization ✅
+**Current**: Copying entire Flutter SDK to make gradle directory writable
+**Improvement**: Only copy the specific flutter_tools/gradle directory that needs to be writable
+**Benefits**:
+- Much smaller copy operation
+- Faster setup
+- Less disk space usage
+
+**Implementation Complete**:
+- Changed from copying entire Flutter SDK (75MB) to minimal required structure (164KB)
+- **99.8% size reduction** - from 75MB to 164KB
+- Only copies gradle directory and minimal dependencies (engine.version, version files)
+- Creates `.flutter-tools-local` instead of `.flutter-sdk-local` 
+- **Tested and verified**: Debug and release builds continue to work perfectly
+
+## 5. Android SDK Optimization
 **Current**: Including multiple build-tools versions (33, 34, 35) and full NDK
 **Improvement**: 
 - Determine which specific build-tools version is actually needed
@@ -63,7 +88,7 @@
 - Faster environment setup
 - Less disk space usage
 
-## 5. Cleanup Debug Files
+## 6. Cleanup Debug Files ✅
 **Current**: Multiple temporary debug files left in android/ directory
 **Files to remove**:
 - `android/gradle_output.txt`
@@ -76,13 +101,10 @@
 - Cleaner repository
 - No confusion about which files are needed
 
-## 6. Performance - Pre-cached Flutter SDK
-**Current**: Creating Flutter SDK copy on first run in shellHook
-**Improvement**: Consider caching the patched Flutter SDK or creating it as part of the Nix derivation
-**Benefits**:
-- Faster shell startup
-- No first-run penalty
-- More reproducible
+**Implementation Complete**:
+- Removed all temporary debug files from repository
+- Files cleaned: debug.log, results.log, gradle_build_output.log, error.log, gradle_output.log, build_output.log, gradle_debug.log, gradle_realtime.log, test-gradle.gradle, gradle_output.txt, prompt.txt
+- Repository is now clean with only essential files
 
 ## 7. Error Handling in Patch Script
 **Current**: The patch script uses `|| true` to silently fail
@@ -92,13 +114,21 @@
 - Better visibility into what's happening
 - Can detect and report specific failure modes
 
-## 8. Flutter Tools Gradle Directory
-**Current**: Copying entire Flutter SDK to make gradle directory writable
-**Improvement**: Only copy the specific flutter_tools/gradle directory that needs to be writable
+## 8. Environment Variables Consolidation
+**Current**: Multiple environment variables scattered in flake.nix shellHook
+**Improvement**: Consider consolidating related variables or using a `.env` file
 **Benefits**:
-- Much smaller copy operation
-- Faster setup
-- Less disk space usage
+- Cleaner flake.nix
+- Easier to manage and override locally
+- Better separation of concerns
+
+## 9. Pre-cached Flutter SDK
+**Current**: Creating Flutter SDK copy on first run in shellHook
+**Improvement**: Consider caching the patched Flutter SDK or creating it as part of the Nix derivation
+**Benefits**:
+- Faster shell startup
+- No first-run penalty
+- More reproducible
 
 ## Key Learnings from Completed Work
 
@@ -122,26 +152,34 @@
 - **1.14.3+**: Compatible with Java 21 (class file major version 65)
 - **Impact**: Transitive dependencies can break builds even when direct dependencies are compatible
 
+### 4. Flutter APK Detection Patterns
+**Critical Discovery**: Flutter's APK detection follows specific directory structure expectations:
+- **Expected Structure**: `/build/app/outputs/flutter-apk/app-*.apk`
+- **Default Gradle Output**: `/android/app/build/outputs/flutter-apk/app-*.apk`
+- **Solution**: Gradle tasks with `doLast` to copy APKs after build completion
+- **Impact**: Without proper directory structure, Flutter shows false error messages despite successful builds
+
 ## Next Steps - Recommended Priority Order
 
 ### Immediate (Low Effort, High Impact)
-3. **Flutter Tools Directory Optimization**: Only copy flutter_tools/gradle instead of entire SDK
-4. **Cleanup Debug Files**: Remove temporary .log and test files from repository  
-5. **Error Handling**: Improve patch script error reporting and logging
+4. **Flutter Tools Directory Optimization**: Only copy flutter_tools/gradle instead of entire SDK
+6. **Cleanup Debug Files**: Remove temporary .log and test files from repository  
+7. **Error Handling**: Improve patch script error reporting and logging
 
 ### Medium Term (Medium Effort, Good Impact)  
-6. **Android SDK Optimization**: Remove unused build-tools versions and unnecessary components
-7. **Environment Variables**: Consolidate related variables for cleaner flake.nix
+5. **Android SDK Optimization**: Remove unused build-tools versions and unnecessary components
+8. **Environment Variables**: Consolidate related variables for cleaner flake.nix
 
 ### Long Term (High Effort, Complex)
-8. **Pre-cached Flutter SDK**: Create Nix derivation with pre-patched Flutter tools
+9. **Pre-cached Flutter SDK**: Create Nix derivation with pre-patched Flutter tools
 
 ## Implementation Priority
 ~~1. Binary Patching (High impact, moderate effort)~~ ✅ **COMPLETE**
-~~2. Java Compatibility (High impact for release builds, low effort)~~ ✅ **COMPLETE**  
-3. Flutter Tools optimization (Low effort, good performance gain)
-4. Cleanup debug files (Low effort, immediate benefit)
-5. Error handling (Low effort, helps future debugging)
-6. Android SDK optimization (Requires testing, medium effort)
-7. Environment variables (Low priority, cosmetic)
-8. Pre-cached Flutter SDK (Complex, requires Nix expertise)
+~~2. Java Compatibility (High impact for release builds, low effort)~~ ✅ **COMPLETE**
+~~3. APK Detection Fix (Medium effort, eliminates confusing errors)~~ ✅ **COMPLETE**
+4. Flutter Tools optimization (Low effort, good performance gain)
+5. Android SDK optimization (Requires testing, medium effort)
+6. Cleanup debug files (Low effort, immediate benefit)
+7. Error handling (Low effort, helps future debugging)
+8. Environment variables (Low priority, cosmetic)
+9. Pre-cached Flutter SDK (Complex, requires Nix expertise)

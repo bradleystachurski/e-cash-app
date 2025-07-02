@@ -1,7 +1,0 @@
-task testGradle {
-    doLast {
-        println "Gradle is working!"
-        println "Java version: ${System.getProperty('java.version')}"
-        println "Gradle version: ${gradle.gradleVersion}"
-    }
-}

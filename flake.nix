@@ -130,13 +130,19 @@
               mkdir -p "$HOME/.gradle/init.d"
               cp "$ROOT/android/gradle-init-patch-binaries.gradle" "$HOME/.gradle/init.d/"
               
-              # Create writable copy of Flutter SDK to fix includeBuild issue
-              if [ ! -d "$ROOT/.flutter-sdk-local" ]; then
-                echo "Creating writable Flutter SDK copy..."
-                cp -r ${pkgs.flutter} "$ROOT/.flutter-sdk-local"
-                chmod -R +w "$ROOT/.flutter-sdk-local"
+              # Create minimal writable Flutter copy (only what's needed for gradle)
+              if [ ! -d "$ROOT/.flutter-tools-local" ]; then
+                echo "Creating minimal Flutter tools copy..."
+                mkdir -p "$ROOT/.flutter-tools-local/packages/flutter_tools"
+                mkdir -p "$ROOT/.flutter-tools-local/bin/internal"
+                # Copy only the gradle directory that needs to be writable
+                cp -r ${pkgs.flutter}/packages/flutter_tools/gradle "$ROOT/.flutter-tools-local/packages/flutter_tools/"
+                # Copy minimal structure needed for gradle to find engine version
+                cp ${pkgs.flutter}/bin/internal/engine.version "$ROOT/.flutter-tools-local/bin/internal/" 2>/dev/null || true
+                cp ${pkgs.flutter}/version "$ROOT/.flutter-tools-local/" 2>/dev/null || true
+                chmod -R +w "$ROOT/.flutter-tools-local"
               fi
-              export FLUTTER_TOOLS_GRADLE_DIR="$ROOT/.flutter-sdk-local/packages/flutter_tools/gradle"
+              export FLUTTER_TOOLS_GRADLE_DIR="$ROOT/.flutter-tools-local/packages/flutter_tools/gradle"
               
               # Add patchelf for binary patching (still needed by the Gradle init script)
               export PATH="${pkgs.patchelf}/bin:$PATH"
