@@ -18,20 +18,16 @@
 
         androidPkgs = {
           android-sdk = android.sdk.${system} (sdkPkgs: with sdkPkgs; [
-            # Useful packages for building and testing.
-            build-tools-33-0-1
-            build-tools-34-0-0
-            build-tools-35-0-1
-            cmdline-tools-latest
-            cmake-3-22-1
-            emulator
-            platform-tools
-            platforms-android-35
-            # Other useful packages for a development environment.
-            #ndk-26-1-10909125
-            ndk-27-0-12077973
-            # skiaparser-3
-            # sources-android-34
+            # Essential packages for Flutter APK builds
+            build-tools-34-0-0      # Required by some dependencies
+            build-tools-35-0-1      # Latest version (matches compileSdk)
+            cmdline-tools-latest    # Essential command line tools  
+            cmake-3-22-1           # Required for native/Rust builds
+            platform-tools         # adb, fastboot, etc.
+            platforms-android-35   # Target platform (matches compileSdk)
+            ndk-27-0-12077973      # Required for native Rust components (48MB libcarbine_fedimint.so)
+            # Removed: build-tools-33-0-1 (not requested by any dependencies)
+            # Removed: emulator (no instrumentation tests found)
           ]
           ++ lib.optionals (system == "aarch64-darwin") [
             # system-images-android-34-google-apis-arm64-v8a
@@ -111,20 +107,28 @@
 	    shellHook = ''
 	      ${old.shellHook or ""}
 
-              export LD_LIBRARY_PATH="${pkgs.zlib}/lib:${pkgs.stdenv.cc.cc.lib}/lib:$LD_LIBRARY_PATH"
+              # System Configuration
               export NIXPKGS_ALLOW_UNFREE=1
               export ROOT="$PWD"
+              export LD_LIBRARY_PATH="${pkgs.zlib}/lib:${pkgs.stdenv.cc.cc.lib}/lib:$LD_LIBRARY_PATH"
+
+              # Android SDK Configuration
               export ANDROID_SDK_ROOT=${androidPkgs.android-sdk}/share/android-sdk
               export ANDROID_SDK_HOME=$HOME
               export ANDROID_NDK_ROOT=$ANDROID_SDK_ROOT/ndk/27.0.12077973
               export ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/27.0.12077973
+
+              # Java Configuration  
               export JAVA_HOME=${pkgs.jdk21}/lib/openjdk
+
+              # Flutter Configuration
               export FLUTTER_ROOT=${pkgs.flutter}
+
+              # Gradle Configuration
               export GRADLE_HOME=${pkgs.gradle}
-              export PATH=${pkgs.gradle}/bin:$PATH
-              
               export GRADLE_USER_HOME="$HOME/.gradle"
               export GRADLE_OPTS="-Dorg.gradle.java.home=${pkgs.jdk21}/lib/openjdk -Dorg.gradle.user.home=$HOME/.gradle"
+              export PATH=${pkgs.gradle}/bin:$PATH
               
               # Create gradle init directory and copy our init script
               mkdir -p "$HOME/.gradle/init.d"
