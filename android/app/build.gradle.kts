@@ -74,3 +74,77 @@ android {
 flutter {
     source = "../.."
 }
+
+// Copy APKs to where Flutter expects them with multiple naming patterns
+afterEvaluate {
+    tasks.named("assembleDebug") {
+        doLast {
+            // Create all possible directories Flutter might check
+            mkdir("$rootDir/../build")
+            mkdir("$rootDir/../build/outputs")
+            mkdir("$rootDir/../build/outputs/flutter-apk")
+            mkdir("$rootDir/../build/app")
+            mkdir("$rootDir/../build/app/outputs")
+            mkdir("$rootDir/../build/app/outputs/flutter-apk")
+            
+            // Copy to multiple locations with different names
+            copy {
+                from("$buildDir/outputs/flutter-apk")
+                into("$rootDir/../build")
+                include("*.apk")
+            }
+            copy {
+                from("$buildDir/outputs/flutter-apk")
+                into("$rootDir/../build/outputs/flutter-apk")
+                include("*.apk")
+            }
+            copy {
+                from("$buildDir/outputs/flutter-apk")
+                into("$rootDir/../build/app/outputs/flutter-apk")
+                include("*.apk")
+            }
+            // Also try with "carbine" name
+            copy {
+                from("$buildDir/outputs/flutter-apk")
+                into("$rootDir/../build")
+                include("*.apk")
+                rename("app-debug.apk", "carbine-debug.apk")
+            }
+        }
+    }
+    tasks.named("assembleRelease") {
+        doLast {
+            // Create all possible directories Flutter might check
+            mkdir("$rootDir/../build")
+            mkdir("$rootDir/../build/outputs")
+            mkdir("$rootDir/../build/outputs/flutter-apk")
+            mkdir("$rootDir/../build/app")
+            mkdir("$rootDir/../build/app/outputs")
+            mkdir("$rootDir/../build/app/outputs/flutter-apk")
+            
+            // Copy to multiple locations with different names
+            copy {
+                from("$buildDir/outputs/flutter-apk")
+                into("$rootDir/../build")
+                include("*.apk")
+            }
+            copy {
+                from("$buildDir/outputs/flutter-apk")
+                into("$rootDir/../build/outputs/flutter-apk")
+                include("*.apk")
+            }
+            copy {
+                from("$buildDir/outputs/flutter-apk")
+                into("$rootDir/../build/app/outputs/flutter-apk")
+                include("*.apk")
+            }
+            // Also try with "carbine" name
+            copy {
+                from("$buildDir/outputs/flutter-apk")
+                into("$rootDir/../build")
+                include("*.apk")
+                rename("app-release.apk", "carbine-release.apk")
+            }
+        }
+    }
+}

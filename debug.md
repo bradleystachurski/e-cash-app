@@ -485,3 +485,126 @@ Update Gradle version in android/gradle/wrapper/gradle-wrapper.properties
 - Initial: Hanging indefinitely
 - After fixes: 800ms failures → 2-5s failures → 53s success → 4.2s success (debug)
 - Current: Debug works, Release fails at Java compatibility
+
+## ✅ UPDATE: All Issues Resolved (July 2, 2025)
+
+### Final Status:
+- **Debug APK builds**: ✅ Working perfectly (126MB APK generated)
+- **Release APK builds**: ✅ Fixed with dependency constraints (55MB APK generated)
+- **Binary patching**: ✅ Automated with Gradle init script
+- **Java compatibility**: ✅ Resolved by pinning byte-buddy to 1.14.18
+
+### Remaining Minor Issue: APK Detection Warning
+
+**Symptom**: Flutter shows "Gradle build failed to produce an .apk file" even though APKs are generated successfully in:
+- `/android/app/build/outputs/flutter-apk/app-debug.apk`
+- `/android/app/build/outputs/flutter-apk/app-release.apk`
+
+**Root Cause Analysis**:
+1. This is NOT an environment variable or path configuration issue
+2. All paths are correctly set:
+   - `FLUTTER_ROOT`: `/nix/store/.../flutter-wrapped-3.29.3-sdk-links` ✅
+   - `ANDROID_SDK_ROOT`: `/nix/store/.../android-sdk-env/share/android-sdk` ✅
+   - `ANDROID_HOME`: Same as ANDROID_SDK_ROOT ✅
+   - `JAVA_HOME`: `/nix/store/.../openjdk-21.0.7+6/lib/openjdk` ✅
+3. Flutter doctor shows all toolchains working correctly
+4. local.properties has correct SDK and Flutter paths
+
+**The Real Issue**: Flutter's APK search logic expects APKs in project root `/build` directory, but Gradle places them in `/android/app/build/outputs/`
+
+**Solution**: Add Gradle task to copy APKs to expected location (see next section)
+
+## Next Steps: Fix APK Detection Warning
+
+### Implementation Plan:
+1. Add a Gradle task to `android/app/build.gradle.kts` that copies APKs to where Flutter expects them
+2. This task should run automatically after assembleDebug and assembleRelease
+3. APKs will be copied from `/android/app/build/outputs/flutter-apk/` to `/build/`
+
+### Why NOT Environment Variables:
+- Environment variables are already correctly set and detected by Flutter
+- Adding redundant exports won't fix the search path logic issue
+- The current Nix setup follows best practices and shouldn't be modified
+- This is a known Flutter issue with a standard Gradle-based solution
+
+### Code to Add:
+```kotlin
+// Add to android/app/build.gradle.kts at the end of the file
+
+tasks.register<Copy>("copyApkToRoot") {
+    from("$buildDir/outputs/flutter-apk")
+    into("$rootDir/../build")
+    include("*.apk")
+}
+
+afterEvaluate {
+    tasks.named("assembleDebug") {
+        finalizedBy("copyApkToRoot")
+    }
+    tasks.named("assembleRelease") {
+        finalizedBy("copyApkToRoot")  
+    }
+}
+```
+
+This solution:
+- Maintains compatibility with existing Nix setup
+- Fixes the warning without modifying environment
+- Follows Flutter community best practices
+- Is non-invasive and easily reversible
+
+### Implementation Results:
+- ✅ Gradle task successfully copies APKs to `/build` directory
+- ✅ APKs are generated in all expected locations:
+  - `/android/app/build/outputs/flutter-apk/app-*.apk` (original)
+  - `/android/app/build/outputs/apk/*/app-*.apk` (gradle default)
+  - `/build/app-*.apk` (copied for Flutter)
+- ⚠️ Flutter still shows the warning message (appears to be a timing issue in Flutter's detection logic)
+
+### Final Assessment:
+The warning is **cosmetic only** - builds are 100% successful:
+- APKs are generated correctly
+- All functionality works as expected
+- The warning can be safely ignored
+- This is a known Flutter issue that doesn't affect actual build output
+
+### ✅ FINAL SOLUTION - APK Detection Issue RESOLVED
+
+The key was creating the directory structure that Flutter expects: `/build/app/outputs/flutter-apk/`
+
+**Working Gradle Task:**
+```kotlin
+afterEvaluate {
+    tasks.named("assembleDebug") {
+        doLast {
+            // Create all possible directories Flutter might check
+            mkdir("$rootDir/../build")
+            mkdir("$rootDir/../build/outputs")
+            mkdir("$rootDir/../build/outputs/flutter-apk")
+            mkdir("$rootDir/../build/app")
+            mkdir("$rootDir/../build/app/outputs")
+            mkdir("$rootDir/../build/app/outputs/flutter-apk")
+            
+            // Copy to multiple locations
+            copy {
+                from("$buildDir/outputs/flutter-apk")
+                into("$rootDir/../build/app/outputs/flutter-apk")
+                include("*.apk")
+            }
+        }
+    }
+    // Same for assembleRelease...
+}
+```
+
+**Results:**
+- ✅ Release builds: `✓ Built build/app/outputs/flutter-apk/app-release.apk (55.3MB)`
+- ✅ Debug builds: `✓ Built build/app/outputs/flutter-apk/app-debug.apk`
+- ✅ No more "Gradle build failed to produce an .apk file" error
+
+### Summary for Future Instances:
+1. **All build issues have been completely resolved** - Flutter shows success messages
+2. **Both debug and release APK builds work perfectly**
+3. **Flutter now detects APKs correctly** in `/build/app/outputs/flutter-apk/`
+4. **No environment changes needed** - current setup is optimal
+5. **The solution scales** - works for any future builds automatically
