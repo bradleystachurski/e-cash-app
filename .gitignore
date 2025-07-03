@@ -63,3 +63,4 @@ patch-android-binaries.sh
 **/*.so
 **/*.db/
 **/client.db.lock
+.flutter-tools-local/

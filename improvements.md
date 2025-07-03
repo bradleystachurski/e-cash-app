@@ -190,6 +190,13 @@
 - **Professional Output**: Clean build logs that focus on the actual build progress
 - **Debug Mode Available**: Detailed logging can be enabled when troubleshooting is needed
 
+### 6. Repository Complexity Management
+**Code Maintenance Learning**: Integrated solutions reduce maintenance overhead:
+- **Single Source of Truth**: Nix flake replaces multiple shell scripts (build-apk.sh, final-build.sh, etc.)
+- **Temporary Files**: Debug logs and cache directories should not be committed to git
+- **Obsolete Code**: Remove unused scripts and files after implementing better solutions
+- **Documentation Consolidation**: Keep implementation details in one primary document rather than scattered across multiple files
+
 ## Next Steps - Recommended Priority Order
 
 ### Immediate (Low Effort, High Impact) - ALL COMPLETE ✅
@@ -214,3 +221,42 @@
 ~~7. Android SDK optimization (Requires testing, medium effort)~~ ✅ **COMPLETE**
 ~~8. Environment variables (Low priority, cosmetic)~~ ✅ **COMPLETE**
 ~~9. Pre-cached Flutter SDK (Complex, requires Nix expertise)~~ ⚠️ **EVALUATED - NOT RECOMMENDED**
+
+## Repository Cleanup Tasks (Post-Implementation) ✅
+
+**Status**: COMPLETE - Repository cleaned and optimized
+
+**Completed Cleanup Actions**:
+1. ✅ **Removed Obsolete Build Scripts** (~8KB):
+   - `build-apk-manual.sh`, `build-apk.sh`, `final-build.sh`
+   - `setup-flutter-build.sh`, `patch-android-binaries.sh`
+   - **Reason**: All replaced by integrated Nix flake solution
+
+2. ✅ **Removed Debug Log Files** (~70KB):
+   - `android/gradle_logs.out`, `android/gradle_logs2.out`, `results.log`
+   - **Reason**: Temporary files from debugging sessions
+
+3. ✅ **Removed Committed Cache Directory**:
+   - `.flutter-tools-local/` (should be generated locally)
+   - **Reason**: Added to .gitignore, shouldn't be committed
+
+4. ✅ **Updated .gitignore**:
+   - Added `.flutter-tools-local/` pattern
+   - Confirmed existing patterns for gradle logs and results.log
+
+5. **Documentation Consolidation** (optional for future):
+   - Consider merging `insights.md` and `debug.md` content into this file
+   - Keep this as the single source of truth for build improvements
+
+**Cleanup Results**:
+- **~78KB removed** (obsolete scripts + debug logs)
+- **23 Flutter cache files** removed from git tracking
+- **Repository complexity significantly reduced**
+- **Single source of truth**: `nix develop --command flutter build apk`
+
+**Benefits Achieved**:
+- ✅ Simpler repository navigation
+- ✅ Reduced confusion about which files are needed  
+- ✅ Cleaner git history going forward
+- ✅ Easier onboarding for new developers
+- ✅ No accidental commits of generated files
