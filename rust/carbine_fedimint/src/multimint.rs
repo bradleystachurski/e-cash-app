@@ -16,7 +16,7 @@ use fedimint_client::{
     module::{module::recovery::RecoveryProgress, oplog::OperationLogEntry},
     module_init::ClientModuleInitRegistry,
     secret::RootSecretStrategy,
-    Client, ClientHandleArc, OperationId,
+    Client, ClientHandleArc, OperationId, RootSecret,
 };
 use fedimint_core::{
     config::{ClientConfig, FederationId},
@@ -959,15 +959,10 @@ impl Multimint {
 
         let client = match client_type {
             ClientType::Recovery { client_config } => {
-                let backup = client_builder
-                    .download_backup_from_federation(
-                        &secret,
-                        &client_config,
-                        invite_code.api_secret(),
-                    )
-                    .await?;
                 let client = client_builder
-                    .recover(secret, client_config, invite_code.api_secret(), backup)
+                    .preview(invite_code)
+                    .await?
+                    .recover(RootSecret::Custom(secret), None)
                     .await
                     .map(Arc::new)?;
                 self.spawn_recovery_progress(client.clone(), invite_code.to_string());
@@ -976,12 +971,13 @@ impl Multimint {
             client_type => {
                 let client = if Client::is_initialized(client_builder.db_no_decoders()).await {
                     info_to_flutter("Client is already initialized, opening using secret...").await;
-                    client_builder.open(secret).await
+                    client_builder.open(RootSecret::Custom(secret)).await
                 } else {
                     info_to_flutter("Client is not initialized, downloading invite code...").await;
-                    let client_config = connector.download_from_invite_code(&invite_code).await?;
                     client_builder
-                        .join(secret, client_config.clone(), invite_code.api_secret())
+                        .preview(invite_code)
+                        .await?
+                        .join(RootSecret::Custom(secret))
                         .await
                 }
                 .map(Arc::new)?;
@@ -1264,7 +1260,7 @@ impl Multimint {
         let (operation_id, invoice, _) = lnv1
             .create_bolt11_invoice(
                 amount_with_fees,
-                lightning_invoice::Bolt11InvoiceDescription::Direct(&desc),
+                lightning_invoice::Bolt11InvoiceDescription::Direct(desc),
                 Some(DEFAULT_EXPIRY_TIME_SECS as u64),
                 to_value(amount_without_fees)?,
                 Some(gateway),
