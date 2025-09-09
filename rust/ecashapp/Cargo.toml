@@ -12,19 +12,19 @@ async-stream = "0.3.6"
 async-trait = "0.1.88"
 bitcoin = { version = "0.32.5", features = ["serde"] }
 bitcoin-payment-instructions = { version = "0.4.0", features = [ "http" ]}
-fedimint-api-client = "0.8.1"
-fedimint-bip39 = "0.8.1"
-fedimint-core = "0.8.1"
-fedimint-client = "0.8.1"
-fedimint-derive-secret = "0.8.1"
-fedimint-rocksdb = "0.8.1"
-fedimint-ln-client = "0.8.1"
-fedimint-lnv2-client = "0.8.1"
-fedimint-lnv2-common = "0.8.1"
-fedimint-ln-common = "0.8.1"
-fedimint-meta-client = "0.8.1"
-fedimint-mint-client = "0.8.1"
-fedimint-wallet-client = "0.8.1"
+fedimint-api-client = { git = "https://github.com/bradleystachurski/fedimint", rev = "8184e2a8c397931ae259c3609baf673239aecdcd" }
+fedimint-bip39 = { git = "https://github.com/bradleystachurski/fedimint", rev = "8184e2a8c397931ae259c3609baf673239aecdcd" }
+fedimint-core = { git = "https://github.com/bradleystachurski/fedimint", rev = "8184e2a8c397931ae259c3609baf673239aecdcd" }
+fedimint-client = { git = "https://github.com/bradleystachurski/fedimint", rev = "8184e2a8c397931ae259c3609baf673239aecdcd" }
+fedimint-derive-secret = { git = "https://github.com/bradleystachurski/fedimint", rev = "8184e2a8c397931ae259c3609baf673239aecdcd" }
+fedimint-rocksdb = { git = "https://github.com/bradleystachurski/fedimint", rev = "8184e2a8c397931ae259c3609baf673239aecdcd" }
+fedimint-ln-client = { git = "https://github.com/bradleystachurski/fedimint", rev = "8184e2a8c397931ae259c3609baf673239aecdcd" }
+fedimint-lnv2-client = { git = "https://github.com/bradleystachurski/fedimint", rev = "8184e2a8c397931ae259c3609baf673239aecdcd" }
+fedimint-lnv2-common = { git = "https://github.com/bradleystachurski/fedimint", rev = "8184e2a8c397931ae259c3609baf673239aecdcd" }
+fedimint-ln-common = { git = "https://github.com/bradleystachurski/fedimint", rev = "8184e2a8c397931ae259c3609baf673239aecdcd" }
+fedimint-meta-client = { git = "https://github.com/bradleystachurski/fedimint", rev = "8184e2a8c397931ae259c3609baf673239aecdcd" }
+fedimint-mint-client = { git = "https://github.com/bradleystachurski/fedimint", rev = "8184e2a8c397931ae259c3609baf673239aecdcd" }
+fedimint-wallet-client = { git = "https://github.com/bradleystachurski/fedimint", rev = "8184e2a8c397931ae259c3609baf673239aecdcd" }
 flutter_rust_bridge = "=2.9.0"
 futures-timer = "3.0.3"
 futures-util = "0.3.30"
