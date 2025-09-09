@@ -51,16 +51,6 @@ android {
     }
 
     buildTypes {
-        debug {
-            // Debug-specific settings for better network compatibility
-            isDebuggable = true
-            isMinifyEnabled = false
-            isShrinkResources = false
-            
-            // Allow network debugging
-            manifestPlaceholders["usesCleartextTraffic"] = "true"
-        }
-        
         release {
             signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = false
@@ -72,3 +62,4 @@ android {
 flutter {
     source = "../.."
 }
+
