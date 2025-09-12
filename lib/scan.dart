@@ -128,6 +128,8 @@ class _ScanQRPageState extends State<ScanQRPage> {
     }
   }
 
+  // Replace the _handleText method in scan.dart with this debug version:
+
   Future<bool> _handleText(String text) async {
     try {
       ParsedText action;
@@ -147,14 +149,36 @@ class _ScanQRPageState extends State<ScanQRPage> {
           action = result.$1;
           chosenFederation = result.$2;
         }
-      } catch (e) {
-        // Check if it's the insufficient balance error
+      } catch (e, stackTrace) {
+        // DEBUG: Log the full error details
+        AppLogger.instance.error("Parsing error caught:");
+        AppLogger.instance.error("Error type: ${e.runtimeType}");
+        AppLogger.instance.error("Error toString: $e");
+        AppLogger.instance.error("Stack trace: $stackTrace");
+
+        // Try different ways to extract the error message
         final errorMessage = e.toString();
+
+        // Also try to access the error as a dynamic type
+        dynamic dynamicError = e;
+        String? alternativeMessage;
+        try {
+          // Try to access message property if it exists
+          alternativeMessage = dynamicError.message?.toString();
+          AppLogger.instance.error("Alternative message: $alternativeMessage");
+        } catch (_) {
+          // No message property
+        }
+
+        // Check multiple possible error message patterns
         if (errorMessage.contains(
-          'No federation found with sufficient balance',
-        )) {
-          // Log the specific error
-          AppLogger.instance.warn("Insufficient balance: $errorMessage");
+              'No federation found with sufficient balance',
+            ) ||
+            errorMessage.contains('insufficient balance') ||
+            errorMessage.contains('Insufficient balance') ||
+            (alternativeMessage != null &&
+                alternativeMessage.contains('balance'))) {
+          AppLogger.instance.warn("Insufficient balance detected!");
 
           // Show user-friendly message about insufficient balance
           ToastService().show(
@@ -169,10 +193,20 @@ class _ScanQRPageState extends State<ScanQRPage> {
           return true;
         }
 
+        // DEBUG: Show the actual error to understand what's happening
+        ToastService().show(
+          message:
+              "Debug: ${errorMessage.substring(0, errorMessage.length > 100 ? 100 : errorMessage.length)}",
+          duration: const Duration(seconds: 10),
+          onTap: () {},
+          icon: Icon(Icons.info),
+        );
+
         // For other parsing errors, rethrow to be handled below
         rethrow;
       }
 
+      // ... rest of the switch statement stays the same ...
       switch (action) {
         case ParsedText_InviteCode(:final field0):
           if (widget.paymentType == null) {
@@ -308,8 +342,10 @@ class _ScanQRPageState extends State<ScanQRPage> {
 
       return true;
     } catch (e) {
-      // Log the error for debugging
-      AppLogger.instance.warn("Failed to parse text: $e");
+      // DEBUG: Log outer catch
+      AppLogger.instance.error("Outer catch - Failed to parse text:");
+      AppLogger.instance.error("Error type: ${e.runtimeType}");
+      AppLogger.instance.error("Error: $e");
 
       // Check for specific error messages and provide appropriate user feedback
       final errorMessage = e.toString();
