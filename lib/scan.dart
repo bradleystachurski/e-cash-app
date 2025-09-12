@@ -115,10 +115,10 @@ class _ScanQRPageState extends State<ScanQRPage> {
         if (!parsed) {
           AppLogger.instance.warn("$actualPayload cannot be parsed");
           ToastService().show(
-            message: "Sorry! That cannot be parsed.",
+            message: "Sorry! That QR code format is not recognized.",
             duration: const Duration(seconds: 5),
             onTap: () {},
-            icon: Icon(Icons.error),
+            icon: Icon(Icons.qr_code_scanner),
           );
         }
       }
@@ -132,17 +132,45 @@ class _ScanQRPageState extends State<ScanQRPage> {
     try {
       ParsedText action;
       FederationSelector? chosenFederation;
-      if (widget.selectedFed != null) {
-        final result = await parseScannedTextForFederation(
-          text: text,
-          federation: widget.selectedFed!,
-        );
-        action = result.$1;
-        chosenFederation = result.$2;
-      } else {
-        final result = await parsedScannedText(text: text);
-        action = result.$1;
-        chosenFederation = result.$2;
+
+      // Try to parse the text
+      try {
+        if (widget.selectedFed != null) {
+          final result = await parseScannedTextForFederation(
+            text: text,
+            federation: widget.selectedFed!,
+          );
+          action = result.$1;
+          chosenFederation = result.$2;
+        } else {
+          final result = await parsedScannedText(text: text);
+          action = result.$1;
+          chosenFederation = result.$2;
+        }
+      } catch (e) {
+        // Check if it's the insufficient balance error
+        final errorMessage = e.toString();
+        if (errorMessage.contains(
+          'No federation found with sufficient balance',
+        )) {
+          // Log the specific error
+          AppLogger.instance.warn("Insufficient balance: $errorMessage");
+
+          // Show user-friendly message about insufficient balance
+          ToastService().show(
+            message:
+                "Insufficient balance in your federations for this payment",
+            duration: const Duration(seconds: 5),
+            onTap: () {},
+            icon: Icon(Icons.account_balance_wallet),
+          );
+
+          // Return true since we successfully parsed but couldn't process due to balance
+          return true;
+        }
+
+        // For other parsing errors, rethrow to be handled below
+        rethrow;
       }
 
       switch (action) {
@@ -279,9 +307,28 @@ class _ScanQRPageState extends State<ScanQRPage> {
       }
 
       return true;
-    } catch (_) {}
+    } catch (e) {
+      // Log the error for debugging
+      AppLogger.instance.warn("Failed to parse text: $e");
 
-    return false;
+      // Check for specific error messages and provide appropriate user feedback
+      final errorMessage = e.toString();
+      if (errorMessage.contains('insufficient balance') ||
+          errorMessage.contains(
+            'No federation found with sufficient balance',
+          )) {
+        ToastService().show(
+          message: "Insufficient balance in your federations for this payment",
+          duration: const Duration(seconds: 5),
+          onTap: () {},
+          icon: Icon(Icons.account_balance_wallet),
+        );
+        return true; // Return true because parsing succeeded, just insufficient funds
+      }
+
+      // For truly unparseable content, return false
+      return false;
+    }
   }
 
   void _onQRCodeScanned(String code) async {
